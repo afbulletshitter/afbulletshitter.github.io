@@ -314,7 +314,7 @@ function renderAcronyms(query=''){renderAcronymTable(ACRONYMS,query,els.results,
 function renderDodAcronyms(query=''){renderAcronymTable(DOD_ACRONYMS,query,els.dodResults,els.dodResultsMeta,'No DoD acronyms match that search.',(shown,total)=>`${shown} matches in ${total} DoD Dictionary entries · showing ${Math.min(shown,250)}`,250)}
 async function loadDodAcronyms(){
   try{
-    const response=await fetch('./dod-acronyms.json');if(!response.ok)throw new Error('unavailable');
+    const response=await fetch('./dod-acronyms.json?v=1.0.4');if(!response.ok)throw new Error('unavailable');
     const entries=await response.json();if(!Array.isArray(entries)||!entries.length)throw new Error('invalid');
     DOD_ACRONYMS=entries.filter(entry=>Array.isArray(entry)&&typeof entry[0]==='string'&&typeof entry[1]==='string');renderDodAcronyms(els.dodSearch.value);
   }catch{els.dodResultsMeta.textContent=`Offline reference subset · ${DOD_ACRONYMS.length} entries`}
