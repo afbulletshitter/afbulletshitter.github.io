@@ -11,7 +11,7 @@ const els={
 const FORM_WIDTH_MM=202.321;
 const PAPER_WIDTH_PX=202.321*96/25.4;
 const PAPER_HEIGHT_PX=192;
-const LINE_LIMIT=10;
+const PREVIEW_LINE_LIMIT=2;
 const NARROW_SPACE='\u2006';
 const WIDE_SPACE='\u2004';
 const FIELD_WIDTH_PX=FORM_WIDTH_MM*96/25.4;
@@ -169,7 +169,7 @@ function optimizeLine(text){
   return {text:spaceVersion(text,order,low,WIDE_SPACE),fits:true,narrow:0,wide:low};
 }
 function optimizeSpaces(text){
-  const rows=text?text.split('\n'):[],optimized=rows.map(optimizeLine),fits=rows.length<=LINE_LIMIT&&optimized.every(row=>row.fits);
+  const rows=text?text.split('\n'):[],optimized=rows.map(optimizeLine),fits=optimized.every(row=>row.fits);
   return {text:optimized.map(row=>row.text).join('\n'),result:{lines:rows.length,fits},narrow:optimized.reduce((sum,row)=>sum+row.narrow,0),wide:optimized.reduce((sum,row)=>sum+row.wide,0)};
 }
 
@@ -178,13 +178,17 @@ function render(){
   currentOutput=optimized.text;
   const result=optimized.result;
   els.preview.textContent=currentOutput;
-  els.box.style.backgroundSize=`100% ${100/LINE_LIMIT}%`;
+  els.measurer.textContent=currentOutput||' ';
+  const lineHeight=parseFloat(getComputedStyle(els.measurer).lineHeight)||19.2;
+  const renderedLines=Math.max(0,Math.round(els.measurer.scrollHeight/lineHeight));
   els.count.textContent=`${cleanText(els.source.value).length} characters`;
-  els.estimate.textContent=`${result.lines} bullet line${result.lines===1?'':'s'}`;
-  els.box.classList.toggle('over',!result.fits);
-  els.hint.textContent=result.fits
-    ?`Fits ${FORM_WIDTH_MM} mm · ${optimized.narrow} U+2006 narrowed · ${optimized.wide} U+2004 widened.`
-    :`Red output means at least one line still exceeds ${FORM_WIDTH_MM} mm after every safe space was changed to U+2006.`;
+  els.estimate.textContent=`${renderedLines} preview line${renderedLines===1?'':'s'}`;
+  els.box.classList.toggle('over',renderedLines>PREVIEW_LINE_LIMIT);
+  els.hint.textContent=renderedLines>PREVIEW_LINE_LIMIT
+    ?`Red output exceeds ${PREVIEW_LINE_LIMIT} lines. Shorten the text or add abbreviations.`
+    :result.fits
+      ?`Fits ${FORM_WIDTH_MM} mm · ${optimized.narrow} U+2006 narrowed · ${optimized.wide} U+2004 widened.`
+      :`One line still exceeds ${FORM_WIDTH_MM} mm after every safe space was changed to U+2006.`;
 }
 
 function loadRules(){
@@ -256,26 +260,30 @@ function setDrawer(open){drawer.classList.toggle('collapsed',!open);document.bod
 $('#drawerToggle').addEventListener('click',()=>setDrawer(drawer.classList.contains('collapsed')));
 $('#drawerClose').addEventListener('click',()=>setDrawer(false));
 const drawerTabs=[...document.querySelectorAll('.drawer-tab')];
-drawerTabs.forEach(tab=>tab.addEventListener('click',()=>{
+function selectDrawerTab(tab){
   drawerTabs.forEach(item=>{const selected=item===tab;item.classList.toggle('active',selected);item.setAttribute('aria-selected',String(selected));document.getElementById(item.getAttribute('aria-controls')).hidden=!selected});
-}));
+}
+drawerTabs.forEach(tab=>tab.addEventListener('click',()=>selectDrawerTab(tab)));
 setDrawer(false);
 
 const APPEARANCE_KEY='bullet-shitter-appearance-v1';
 let appearance={theme:'light',nightHue:0};
 try{const stored=JSON.parse(localStorage.getItem(APPEARANCE_KEY)||'{}');if(stored.theme==='dark'||stored.theme==='light')appearance.theme=stored.theme;const level=Number(stored.nightHue);if(Number.isFinite(level))appearance.nightHue=Math.min(100,Math.max(0,level))}catch{}
-function applyAppearance(){
+function applyAppearance(sync=true){
   document.body.dataset.theme=appearance.theme;
   const warmth=appearance.nightHue/100;
-  document.documentElement.style.filter=warmth?`sepia(${Math.round(warmth*72)}%) saturate(${Math.round(100+warmth*62)}%) hue-rotate(${Math.round(warmth*-18)}deg) brightness(${Math.round(100-warmth*22)}%)`:'none';
+  document.documentElement.style.removeProperty('filter');
+  $('#nightLightOverlay').style.opacity=String(warmth*(appearance.theme==='dark'?.34:.48));
+  $('#nightLightOverlay').style.mixBlendMode=appearance.theme==='dark'?'screen':'multiply';
   const selected=document.querySelector(`input[name="siteTheme"][value="${appearance.theme}"]`);if(selected)selected.checked=true;
   $('#nightHue').value=String(appearance.nightHue);$('#nightHueOutput').textContent=`${appearance.nightHue}%`;
   try{localStorage.setItem(APPEARANCE_KEY,JSON.stringify(appearance))}catch{}
+  if(sync)schedulePreferenceSync();
 }
 document.querySelectorAll('input[name="siteTheme"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked){appearance.theme=input.value;applyAppearance()}}));
 $('#nightHue').addEventListener('input',event=>{appearance.nightHue=Number(event.target.value);applyAppearance()});
 $('#resetSettings').addEventListener('click',()=>confirmAction($('#resetSettings'),'Confirm reset',()=>{appearance={theme:'light',nightHue:0};applyAppearance();notify('Appearance reset')}));
-applyAppearance();
+applyAppearance(false);
 
 const WORD_BANK={
   achieved:['reached a desired result successfully',['accomplished','attained','delivered','secured']],
@@ -319,12 +327,48 @@ const WORD_BANK={
   transformed:['changed something substantially for the better',['modernized','overhauled','restructured','revolutionized']],
   upgraded:['raised something to a newer or better standard',['enhanced','improved','modernized','strengthened']]
 };
-$('#thesaurusForm').addEventListener('submit',event=>{
-  event.preventDefault();
-  const term=$('#thesaurusSearch').value.trim();
-  if(!term)return;
-  window.open(`https://www.thesaurus.com/browse/${encodeURIComponent(term)}`,'_blank','noopener,noreferrer');
-});
+function wordBankFallback(term){
+  const key=term.toLowerCase();
+  if(WORD_BANK[key])return {word:key,definition:WORD_BANK[key][0],synonyms:WORD_BANK[key][1]};
+  const keys=Object.keys(WORD_BANK);let best='',score=Infinity;
+  const distance=(a,b)=>{const matrix=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)matrix[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)matrix[i][j]=Math.min(matrix[i-1][j]+1,matrix[i][j-1]+1,matrix[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return matrix[a.length][b.length]};
+  keys.forEach(candidate=>{const next=distance(key,candidate);if(next<score){score=next;best=candidate}});
+  return best&&score<=Math.max(2,Math.floor(key.length/3))?{suggestion:best}:null;
+}
+function renderThesaurusEntry(word,definition,synonyms=[]){
+  const results=$('#thesaurusResults');results.replaceChildren();
+  const card=document.createElement('article');card.className='definition-card';
+  const title=document.createElement('h4');title.textContent=word;
+  const copy=document.createElement('p');copy.textContent=definition||'No definition was returned for this word.';
+  const label=document.createElement('div');label.className='part';label.textContent='Synonyms';
+  const buttons=document.createElement('div');buttons.className='synonym-buttons';
+  synonyms.slice(0,18).forEach(item=>{const button=document.createElement('button');button.type='button';button.className='synonym-button';button.textContent=typeof item==='string'?item:item.word;button.addEventListener('click',()=>lookupThesaurus(button.textContent));buttons.append(button)});
+  card.append(title,copy,label,buttons);results.append(card);
+}
+function showSpellingSuggestion(word){
+  const holder=$('#thesaurusSuggestion');holder.replaceChildren();
+  if(!word){holder.hidden=true;return}
+  const text=document.createTextNode('Did you mean '),button=document.createElement('button');button.type='button';button.className='text-button';button.textContent=word;button.addEventListener('click',()=>lookupThesaurus(word));holder.append(text,button,document.createTextNode('?'));holder.hidden=false;
+}
+async function lookupThesaurus(rawTerm){
+  const term=rawTerm.trim();if(!term)return;$('#thesaurusSearch').value=term;$('#thesaurusStatus').textContent='Searching…';showSpellingSuggestion('');
+  try{
+    const encoded=encodeURIComponent(term),[headResponse,synResponse,sugResponse]=await Promise.all([fetch(`https://api.datamuse.com/words?sp=${encoded}&md=dp&qe=sp&max=1`),fetch(`https://api.datamuse.com/words?rel_syn=${encoded}&md=dp&max=24`),fetch(`https://api.datamuse.com/sug?s=${encoded}&max=3`)]);
+    if(!headResponse.ok||!synResponse.ok)throw new Error('lookup unavailable');
+    const [head,synonyms,suggestions]=await Promise.all([headResponse.json(),synResponse.json(),sugResponse.ok?sugResponse.json():[]]);
+    const exact=head.find(item=>item.word?.toLowerCase()===term.toLowerCase())||head[0];
+    const definition=(exact?.defs?.[0]||synonyms.find(item=>item.defs?.length)?.defs?.[0]||'').replace(/^[a-z]+\t/i,'');
+    if(!exact&&!synonyms.length)throw new Error('no match');
+    renderThesaurusEntry(exact?.word||term,definition,synonyms);
+    const suggestion=suggestions.find(item=>item.word?.toLowerCase()!==term.toLowerCase())?.word;showSpellingSuggestion(exact?.word?.toLowerCase()===term.toLowerCase()?'':suggestion);
+    $('#thesaurusStatus').textContent=`${synonyms.length} synonym${synonyms.length===1?'':'s'} found. Select one to explore it.`;
+  }catch{
+    const fallback=wordBankFallback(term);
+    if(fallback?.word){renderThesaurusEntry(fallback.word,fallback.definition,fallback.synonyms);$('#thesaurusStatus').textContent='Showing the offline Air Force writing word bank.'}
+    else{$('#thesaurusResults').replaceChildren();$('#thesaurusStatus').textContent='No definition or synonyms were found.';showSpellingSuggestion(fallback?.suggestion||'')}
+  }
+}
+$('#thesaurusForm').addEventListener('submit',event=>{event.preventDefault();void lookupThesaurus($('#thesaurusSearch').value)});
 
 const confirmationTimers=new WeakMap();
 function resetConfirmation(button){const timer=confirmationTimers.get(button);if(timer)clearTimeout(timer);confirmationTimers.delete(button);button.textContent=button.dataset.defaultLabel||button.textContent;button.classList.remove('confirming-action');delete button.dataset.confirming}
@@ -339,6 +383,7 @@ function notify(message){els.toast.textContent=message;els.toast.classList.add('
 // this site's public project URL and anon key in auth-config.js.
 const AUTH_SESSION_KEY='bullet-shitter-auth-session-v1';
 const PENDING_SYNC_KEY='bullet-shitter-pending-sync-v1';
+const PENDING_IMPORT_KEY='bullet-shitter-pending-import-v1';
 const authConfig=globalThis.BULLET_SHITTER_AUTH||{};
 const accountDialog=$('#accountDialog');
 let authSession=null;
@@ -365,30 +410,43 @@ async function dataRequest(table,{method='GET',query='select=*',body,prefer,_ret
 }
 function sessionUser(){return authSession?.user||null}
 function displayNameFor(user){return user?.user_metadata?.display_name||user?.email?.split('@')[0]||'Profile'}
+let accountMode='signin';
+let pendingGuestImport=null;
+function switchAccountMode(mode){
+  accountMode=mode==='signup'?'signup':'signin';
+  $('#accountSignInForm').hidden=accountMode!=='signin';$('#accountSignUpForm').hidden=accountMode!=='signup';
+  $('#showSignIn').classList.toggle('active',accountMode==='signin');$('#showSignIn').setAttribute('aria-selected',String(accountMode==='signin'));
+  $('#showSignUp').classList.toggle('active',accountMode==='signup');$('#showSignUp').setAttribute('aria-selected',String(accountMode==='signup'));
+  $('#accountDialogTitle').textContent=accountMode==='signin'?'Sign in':'Create account';
+  $('#accountStatus').textContent=accountMode==='signin'?'Enter your email and password.':'Create an account with any valid email address.';
+}
 function renderAccount(){
   const user=sessionUser(),signedIn=Boolean(user);
   $('#profileName').textContent=signedIn?displayNameFor(user):'Sign in';
   $('#profileEmail').textContent=signedIn?user.email:'Save work to your account';
   $('#profileAvatar').textContent=signedIn?displayNameFor(user).slice(0,1).toUpperCase():'?';
-  $('#accountAuthForm').hidden=signedIn;$('#profileForm').hidden=!signedIn;
-  $('#accountDialogTitle').textContent=signedIn?'Your profile':'Sign in or create an account';
-  if(signedIn){$('#profileDisplayName').value=displayNameFor(user);$('#profileEmailInput').value=user.email||'';$('#accountStatus').textContent='Signed in. Your saved work syncs with this account.'}
-  else $('#accountStatus').textContent=authReady()?'Use any valid email address. Email verification may be required.':'Account registration is prepared but not connected yet.';
+  $('#profileForm').hidden=!signedIn;$('#accountSignOut').hidden=!signedIn;$('#settingsSignIn').hidden=signedIn;
+  $('#settingsAccountStatus').textContent=signedIn?'Profile and appearance settings sync with this account.':'Sign in to update your profile and sync appearance settings.';
+  if(signedIn){$('#profileDisplayName').value=displayNameFor(user);$('#profileEmailInput').value=user.email||''}
 }
 function saveAuthSession(session){authSession=session||null;try{session?localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session)):localStorage.removeItem(AUTH_SESSION_KEY)}catch{}renderAccount()}
-$('#profileTrigger').addEventListener('click',()=>{renderAccount();accountDialog.showModal()});
+function openAccountDialog(mode='signin'){switchAccountMode(mode);accountDialog.showModal()}
+function openAccountSettings(){setDrawer(true);selectDrawerTab(document.querySelector('[aria-controls="drawer-settings"]'));$('#profileDisplayName').focus()}
+$('#profileTrigger').addEventListener('click',()=>{renderAccount();sessionUser()?openAccountSettings():openAccountDialog('signin')});
+$('#settingsSignIn').addEventListener('click',()=>openAccountDialog('signin'));
+$('#showSignIn').addEventListener('click',()=>switchAccountMode('signin'));$('#showSignUp').addEventListener('click',()=>switchAccountMode('signup'));
 $('#accountClose').addEventListener('click',()=>accountDialog.close());
 accountDialog.addEventListener('click',event=>{if(event.target===accountDialog)accountDialog.close()});
-$('#accountAuthForm').addEventListener('submit',async event=>{
+$('#accountSignInForm').addEventListener('submit',async event=>{
   event.preventDefault();const button=$('#accountSignIn');button.disabled=true;
-  try{const data=await authRequest('token?grant_type=password',{body:{email:$('#accountEmail').value.trim(),password:$('#accountPassword').value}});saveAuthSession(data);await initializeAccountStorage();notify('Signed in')}
+  try{rememberGuestWork();const data=await authRequest('token?grant_type=password',{body:{email:$('#accountEmail').value.trim(),password:$('#accountPassword').value}});saveAuthSession(data);accountDialog.close();await initializeAccountStorage({offerGuestImport:true});notify('Signed in')}
   catch(error){$('#accountStatus').textContent=error.message}finally{button.disabled=false}
 });
-$('#accountSignUp').addEventListener('click',async()=>{
-  const email=$('#accountEmail').value.trim(),password=$('#accountPassword').value,display_name=$('#accountDisplayName').value.trim();
+$('#accountSignUpForm').addEventListener('submit',async event=>{
+  event.preventDefault();const email=$('#accountSignUpEmail').value.trim(),password=$('#accountSignUpPassword').value,display_name=$('#accountDisplayName').value.trim();
   if(!email||password.length<8){$('#accountStatus').textContent='Enter a valid email and a password with at least 8 characters.';return}
   const button=$('#accountSignUp');button.disabled=true;
-  try{const data=await authRequest(`signup?redirect_to=${encodeURIComponent(location.origin+location.pathname)}`,{body:{email,password,data:{display_name}}});if(data.access_token){saveAuthSession(data);await initializeAccountStorage()}$('#accountStatus').textContent=data.access_token?'Account created and signed in.':'Check your email to verify the account, then sign in.'}
+  try{rememberGuestWork();const data=await authRequest(`signup?redirect_to=${encodeURIComponent(location.origin+location.pathname)}`,{body:{email,password,data:{display_name}}});if(data.access_token){saveAuthSession(data);accountDialog.close();await initializeAccountStorage({offerGuestImport:true});notify('Account created')}else{$('#accountStatus').textContent='Check your email to verify the account, then sign in.'}}
   catch(error){$('#accountStatus').textContent=error.message}finally{button.disabled=false}
 });
 $('#accountRecovery').addEventListener('click',async()=>{
@@ -397,8 +455,8 @@ $('#accountRecovery').addEventListener('click',async()=>{
 });
 $('#profileForm').addEventListener('submit',async event=>{
   event.preventDefault();if(!authSession?.access_token)return;
-  try{const password=$('#profileNewPassword').value;const changes={data:{display_name:$('#profileDisplayName').value.trim()}};if(password){if(password.length<8)throw new Error('The new password must be at least 8 characters.');changes.password=password}const user=await authRequest('user',{method:'PUT',token:authSession.access_token,body:changes});authSession.user=user;saveAuthSession(authSession);$('#profileNewPassword').value='';await dataRequest('profiles',{method:'POST',query:'on_conflict=user_id',body:{user_id:user.id,display_name:displayNameFor(user),updated_at:new Date().toISOString()},prefer:'resolution=merge-duplicates'});notify('Profile updated')}
-  catch(error){$('#accountStatus').textContent=error.message}
+  try{const password=$('#profileNewPassword').value,email=$('#profileEmailInput').value.trim(),previousEmail=sessionUser().email;const changes={data:{display_name:$('#profileDisplayName').value.trim()}};if(email&&email!==previousEmail)changes.email=email;if(password){if(password.length<8)throw new Error('The new password must be at least 8 characters.');changes.password=password}const user=await authRequest('user',{method:'PUT',token:authSession.access_token,body:changes});authSession.user=user;saveAuthSession(authSession);$('#profileNewPassword').value='';await saveAccountPreferences();$('#settingsAccountStatus').textContent=email!==previousEmail?'Profile updated. Check both email inboxes if Supabase asks you to confirm the address change.':'Profile updated and synced.';notify('Profile updated')}
+  catch(error){$('#settingsAccountStatus').textContent=error.message}
 });
 $('#accountSignOut').addEventListener('click',async()=>{try{if(authSession?.access_token)await authRequest('logout',{token:authSession.access_token})}catch{}saveAuthSession(null);reloadLocalLibraries();notify('Signed out')});
 renderAccount();
@@ -587,6 +645,37 @@ $('#exportReportButton').addEventListener('click',exportOfficialForm);
 
 function cloudBulletRow(bullet){return{id:bullet.id,user_id:sessionUser().id,title:bullet.title,source:bullet.source,output:bullet.output,rules:bullet.rules,created_at:bullet.createdAt,updated_at:bullet.updatedAt}}
 function cloudReportRow(report){return{id:report.id,user_id:sessionUser().id,title:report.title,report_type:report.type,report_data:report.data,created_at:report.createdAt,updated_at:report.updatedAt}}
+let preferenceSyncTimer=null;
+function schedulePreferenceSync(){if(!sessionUser())return;clearTimeout(preferenceSyncTimer);preferenceSyncTimer=setTimeout(()=>void saveAccountPreferences(),500)}
+async function saveAccountPreferences(){
+  const user=sessionUser();if(!user)return false;
+  await dataRequest('profiles',{method:'POST',query:'on_conflict=user_id',body:{user_id:user.id,display_name:displayNameFor(user),preferences:{theme:appearance.theme,nightHue:appearance.nightHue},updated_at:new Date().toISOString()},prefer:'resolution=merge-duplicates'});return true;
+}
+function guestWorkSnapshot(){
+  const bullets=parseLocalLibrary(BULLETS_KEY),reports=parseLocalLibrary(REPORTS_KEY),source=els.source.value.trim(),data=reportData();
+  const defaultSource='- Led 12-person team through rapid system upgrade—cut processing time 34% and restored mission capability 2 days early';
+  return {bullets,reports,draft:source&&source!==defaultSource?{source,rules:rules.map(rule=>({...rule}))}:null,reportDraft:Object.values(data).some(value=>String(value).trim())?{type:reportType,data}:null};
+}
+function guestWorkCount(snapshot){return (snapshot?.bullets?.length||0)+(snapshot?.reports?.length||0)+(snapshot?.draft?1:0)+(snapshot?.reportDraft?1:0)}
+function rememberGuestWork(){pendingGuestImport=guestWorkSnapshot();if(!guestWorkCount(pendingGuestImport)){forgetPendingGuestWork();return null}try{localStorage.setItem(PENDING_IMPORT_KEY,JSON.stringify(pendingGuestImport))}catch{}return pendingGuestImport}
+function readPendingGuestWork(){if(pendingGuestImport)return pendingGuestImport;try{return JSON.parse(localStorage.getItem(PENDING_IMPORT_KEY)||'null')}catch{return null}}
+function forgetPendingGuestWork(){pendingGuestImport=null;try{localStorage.removeItem(PENDING_IMPORT_KEY)}catch{}}
+function promptGuestImportIfNeeded(){
+  const snapshot=readPendingGuestWork(),count=guestWorkCount(snapshot);if(!count){forgetPendingGuestWork();return}
+  pendingGuestImport=snapshot;$('#importSummary').textContent=`${count} browser item${count===1?' is':'s are'} available to import into this account. Your account library will not be overwritten.`;$('#importDialog').showModal();
+}
+async function importGuestWork(){
+  const snapshot=readPendingGuestWork(),now=new Date().toISOString();if(!snapshot||!sessionUser())return;
+  const bullets=[...(snapshot.bullets||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported bullet',source:row.source||'',output:row.output||row.source||'',rules:Array.isArray(row.rules)?row.rules:DEFAULT_RULES,createdAt:row.createdAt||now,updatedAt:now}));
+  if(snapshot.draft)bullets.push({schemaVersion:1,id:makeId(),title:`Imported draft — ${new Date().toLocaleString()}`,source:snapshot.draft.source,output:optimizeSpaces(applyRules(snapshot.draft.source)).text,rules:snapshot.draft.rules||DEFAULT_RULES,createdAt:now,updatedAt:now});
+  const reports=[...(snapshot.reports||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported report',type:row.type==='OPB'?'OPB':'EPB',data:row.data||{},createdAt:row.createdAt||now,updatedAt:now}));
+  if(snapshot.reportDraft)reports.push({schemaVersion:1,id:makeId(),title:`Imported ${snapshot.reportDraft.type} draft — ${new Date().toLocaleString()}`,type:snapshot.reportDraft.type,data:snapshot.reportDraft.data,createdAt:now,updatedAt:now});
+  if(bullets.length)await dataRequest('bullets',{method:'POST',query:'on_conflict=id',body:bullets.map(cloudBulletRow),prefer:'resolution=merge-duplicates'});
+  if(reports.length)await dataRequest('reports',{method:'POST',query:'on_conflict=id',body:reports.map(cloudReportRow),prefer:'resolution=merge-duplicates'});
+  forgetPendingGuestWork();$('#importDialog').close();await initializeAccountStorage();notify('Browser work imported to account');
+}
+$('#importGuestWork').addEventListener('click',()=>{const button=$('#importGuestWork');button.disabled=true;void importGuestWork().catch(error=>{$('#importSummary').textContent=error.message}).finally(()=>button.disabled=false)});
+$('#skipGuestImport').addEventListener('click',()=>{forgetPendingGuestWork();$('#importDialog').close();notify('Browser work kept on this device')});
 function pendingSyncStorageKey(){const user=sessionUser();return user?`${PENDING_SYNC_KEY}:${user.id}`:null}
 function pendingCloudOperations(){
   const key=pendingSyncStorageKey();if(!key)return[];
@@ -639,34 +728,31 @@ function reloadLocalLibraries(){
   $('#savedReportsStatus').textContent=$('#savedStatus').textContent;
   showSavedBullets();showSavedReports();
 }
-async function initializeAccountStorage(){
+async function initializeAccountStorage({offerGuestImport=false}={}){
   const user=sessionUser();if(!user)return;
   $('#savedStatus').textContent='Syncing your account…';$('#savedReportsStatus').textContent='Syncing your account…';
   try{
-    await dataRequest('profiles',{method:'POST',query:'on_conflict=user_id',body:{user_id:user.id,display_name:displayNameFor(user),updated_at:new Date().toISOString()},prefer:'resolution=merge-duplicates'});
-    const claimed=localStorage.getItem(LEGACY_CLAIM_KEY);
-    if(!claimed){
-      const legacyBullets=parseLocalLibrary(BULLETS_KEY),legacyReports=parseLocalLibrary(REPORTS_KEY);
-      if(legacyBullets.length)await dataRequest('bullets',{method:'POST',query:'on_conflict=id',body:legacyBullets.map(cloudBulletRow),prefer:'resolution=merge-duplicates'});
-      if(legacyReports.length)await dataRequest('reports',{method:'POST',query:'on_conflict=id',body:legacyReports.map(cloudReportRow),prefer:'resolution=merge-duplicates'});
-      localStorage.setItem(LEGACY_CLAIM_KEY,user.id);
-    }
+    const profileRows=await dataRequest('profiles',{query:`select=display_name,preferences&user_id=eq.${encodeURIComponent(user.id)}&limit=1`});
+    const profile=profileRows?.[0];
+    if(profile?.preferences&&typeof profile.preferences==='object'){
+      const theme=profile.preferences.theme,nightHue=Number(profile.preferences.nightHue);if(theme==='light'||theme==='dark')appearance.theme=theme;if(Number.isFinite(nightHue))appearance.nightHue=Math.min(100,Math.max(0,nightHue));applyAppearance(false);
+    }else await saveAccountPreferences();
     await retryPendingSync();
     const [bulletRows,reportRows]=await Promise.all([dataRequest('bullets',{query:'select=*&order=updated_at.desc'}),dataRequest('reports',{query:'select=*&order=updated_at.desc'})]);
     savedBullets=(bulletRows||[]).map(row=>({schemaVersion:1,id:row.id,title:row.title,source:row.source||'',output:row.output||'',rules:Array.isArray(row.rules)?row.rules:[],createdAt:row.created_at,updatedAt:row.updated_at}));
     savedReports=(reportRows||[]).map(row=>({schemaVersion:1,id:row.id,title:row.title,type:row.report_type==='OPB'?'OPB':'EPB',data:row.report_data||{},createdAt:row.created_at,updatedAt:row.updated_at}));
-    storeBullets(savedBullets);storeReports(savedReports);reloadLocalLibraries();
+    storeBullets(savedBullets);storeReports(savedReports);reloadLocalLibraries();if(offerGuestImport)promptGuestImportIfNeeded();
   }catch(error){$('#savedStatus').textContent=`Account connected; cloud storage needs setup: ${error.message}`;$('#savedReportsStatus').textContent=$('#savedStatus').textContent}
 }
 async function restoreAccountSession(){
   if(!authSession?.refresh_token)return;
-  try{const refreshed=await authRequest('token?grant_type=refresh_token',{body:{refresh_token:authSession.refresh_token}});saveAuthSession(refreshed);await initializeAccountStorage()}
+  try{const refreshed=await authRequest('token?grant_type=refresh_token',{body:{refresh_token:authSession.refresh_token}});saveAuthSession(refreshed);await initializeAccountStorage({offerGuestImport:Boolean(readPendingGuestWork())})}
   catch{saveAuthSession(null);reloadLocalLibraries()}
 }
 async function consumeAuthCallback(){
   const params=new URLSearchParams(location.hash.replace(/^#/,''));const access_token=params.get('access_token'),refresh_token=params.get('refresh_token');
   if(!access_token)return false;
-  try{const user=await authRequest('user',{method:'GET',token:access_token});saveAuthSession({access_token,refresh_token,user,expires_in:Number(params.get('expires_in'))||3600,token_type:params.get('token_type')||'bearer'});history.replaceState(null,'',location.pathname+location.search);renderAccount();accountDialog.showModal();$('#accountStatus').textContent=params.get('type')==='recovery'?'Enter a new password below.':'Email verified. You are signed in.';await initializeAccountStorage();return true}catch{return false}
+  try{const user=await authRequest('user',{method:'GET',token:access_token});saveAuthSession({access_token,refresh_token,user,expires_in:Number(params.get('expires_in'))||3600,token_type:params.get('token_type')||'bearer'});history.replaceState(null,'',location.pathname+location.search);renderAccount();await initializeAccountStorage({offerGuestImport:true});openAccountSettings();$('#settingsAccountStatus').textContent=params.get('type')==='recovery'?'Enter a new password, then update your profile.':'Email verified. You are signed in.';return true}catch{return false}
 }
 
 setReportType('EPB');updateReportCounts();showSavedReports();

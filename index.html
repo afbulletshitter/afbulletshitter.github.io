@@ -19,6 +19,7 @@
     <nav class="tool-tabs" role="tablist" aria-label="Writing tools">
       <button class="tool-tab active" id="tab-1206" type="button" role="tab" aria-selected="true" aria-controls="panel-1206">1206 Bullet Builder</button>
       <button class="tool-tab" id="tab-epb" type="button" role="tab" aria-selected="false" aria-controls="panel-epb" tabindex="-1">EPB / OPB</button>
+      <button class="tool-tab" id="tab-alq" type="button" role="tab" aria-selected="false" aria-controls="panel-alq" tabindex="-1">ALQ Guide</button>
     </nav>
     <div id="panel-1206" role="tabpanel" aria-labelledby="tab-1206">
       <section class="intro" aria-labelledby="title">
@@ -122,6 +123,14 @@
         </form>
       </section>
     </div>
+    <div id="panel-alq" role="tabpanel" aria-labelledby="tab-alq" hidden>
+      <section class="alq-panel" aria-labelledby="alqTitle">
+        <div class="alq-heading"><div><p class="eyebrow-flat">OFFICIAL WRITING REFERENCE</p><h1 id="alqTitle">ALQ Writing Guide</h1></div><a class="secondary alq-open" href="https://www.arpc.afrc.af.mil/Portals/4/ALQ%20Writing%20Guide.pdf" target="_blank" rel="noreferrer">Open full PDF</a></div>
+        <object class="alq-pdf" data="https://www.arpc.afrc.af.mil/Portals/4/ALQ%20Writing%20Guide.pdf#view=FitH" type="application/pdf" aria-label="Airman Leadership Qualities Writing Guide PDF">
+          <div class="pdf-fallback"><p>Your browser could not display the guide inside this tab.</p><a class="primary" href="https://www.arpc.afrc.af.mil/Portals/4/ALQ%20Writing%20Guide.pdf" target="_blank" rel="noreferrer">Open the official ALQ Writing Guide</a></div>
+        </object>
+      </section>
+    </div>
   </main>
   <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
     <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody"><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
@@ -152,9 +161,11 @@
           </div>
         </section>
         <section id="drawer-thesaurus" class="drawer-panel" role="tabpanel" hidden>
-          <div class="drawer-section"><h3>Thesaurus.com</h3><p class="drawer-copy">Search Thesaurus.com for synonyms, antonyms, definitions, and examples. Results open in a new tab so your draft stays in place.</p>
+          <div class="drawer-section"><h3>Thesaurus</h3><p class="drawer-copy">Search for synonyms and definitions without leaving your draft. Select any result to explore that word.</p>
             <form id="thesaurusForm" class="lookup-form"><label for="thesaurusSearch">Search a word or phrase</label><div><input id="thesaurusSearch" type="search" autocomplete="off" placeholder="accomplished" required /><button class="primary" type="submit">Search</button></div></form>
-            <p class="external-search-note">Search results are provided directly by Thesaurus.com.</p>
+            <p class="external-search-note" id="thesaurusStatus">Definitions and synonyms are provided by Datamuse, with an offline Air Force writing fallback.</p>
+            <div id="thesaurusSuggestion" class="spelling-suggestion" hidden></div>
+            <div id="thesaurusResults" class="thesaurus-results" aria-live="polite"></div>
           </div>
         </section>
         <section id="drawer-settings" class="drawer-panel" role="tabpanel" hidden>
@@ -163,28 +174,45 @@
             <label class="night-setting" for="nightHue"><span>Night light warmth</span><output id="nightHueOutput">0%</output><input id="nightHue" type="range" min="0" max="100" step="1" value="0" /></label>
             <button class="secondary reset-settings" id="resetSettings" type="button">Reset appearance</button>
           </div>
+          <div class="drawer-section account-settings" id="accountSettingsSection">
+            <h3>Account profile</h3><p class="drawer-copy" id="settingsAccountStatus">Sign in to update your profile and sync appearance settings.</p>
+            <form id="profileForm" class="settings-profile-form" hidden>
+              <label>Display name<input id="profileDisplayName" autocomplete="name" maxlength="80" /></label>
+              <label>Email address<input id="profileEmailInput" type="email" autocomplete="email" /></label>
+              <label>New password <span>(optional)</span><input id="profileNewPassword" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" /></label>
+              <button class="primary" type="submit">Update profile</button>
+            </form>
+            <button class="secondary" id="settingsSignIn" type="button">Sign in</button>
+            <button class="secondary" id="accountSignOut" type="button" hidden>Sign out</button>
+          </div>
         </section>
       </div>
     </div>
   </aside>
   <dialog class="account-dialog" id="accountDialog" aria-labelledby="accountDialogTitle">
-    <div class="account-dialog-head"><div><p class="eyebrow-flat">ACCOUNT</p><h2 id="accountDialogTitle">Sign in or create an account</h2></div><button class="icon-close" id="accountClose" type="button" aria-label="Close account window">×</button></div>
-    <p class="account-status" id="accountStatus" role="status">Use any valid email address. Email verification may be required.</p>
-    <form id="accountAuthForm" class="account-form">
-      <label>Display name<input id="accountDisplayName" autocomplete="name" maxlength="80" /></label>
+    <div class="account-dialog-head"><div><p class="eyebrow-flat">ACCOUNT</p><h2 id="accountDialogTitle">Sign in</h2></div><button class="icon-close" id="accountClose" type="button" aria-label="Close account window">×</button></div>
+    <div class="account-mode-tabs" role="tablist" aria-label="Account access"><button class="account-mode active" id="showSignIn" type="button" role="tab" aria-selected="true">Sign in</button><button class="account-mode" id="showSignUp" type="button" role="tab" aria-selected="false">Create account</button></div>
+    <p class="account-status" id="accountStatus" role="status">Enter your email and password.</p>
+    <form id="accountSignInForm" class="account-form">
       <label>Email address<input id="accountEmail" type="email" autocomplete="email" required /></label>
-      <label>Password<input id="accountPassword" type="password" autocomplete="current-password" minlength="8" required /></label>
-      <div class="account-actions"><button class="primary" id="accountSignIn" type="submit">Sign in</button><button class="secondary" id="accountSignUp" type="button">Create account</button></div>
+      <label>Password<input id="accountPassword" type="password" autocomplete="current-password" required /></label>
+      <button class="primary" id="accountSignIn" type="submit">Sign in</button>
       <button class="text-button account-recovery" id="accountRecovery" type="button">Forgot password?</button>
     </form>
-    <form id="profileForm" class="account-form" hidden>
-      <label>Display name<input id="profileDisplayName" autocomplete="name" maxlength="80" /></label>
-      <label>Email address<input id="profileEmailInput" type="email" disabled /></label>
-      <label>New password (optional)<input id="profileNewPassword" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" /></label>
-      <div class="account-actions"><button class="primary" type="submit">Update profile</button><button class="secondary" id="accountSignOut" type="button">Sign out</button></div>
+    <form id="accountSignUpForm" class="account-form" hidden>
+      <label>Display name<input id="accountDisplayName" autocomplete="name" maxlength="80" required /></label>
+      <label>Email address<input id="accountSignUpEmail" type="email" autocomplete="email" required /></label>
+      <label>Password<input id="accountSignUpPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+      <button class="primary" id="accountSignUp" type="submit">Create account</button>
+      <p class="form-note">We may send a confirmation link before the first sign-in.</p>
     </form>
   </dialog>
-  <div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog class="account-dialog import-dialog" id="importDialog" aria-labelledby="importDialogTitle">
+    <div class="account-dialog-head"><div><p class="eyebrow-flat">UNSAVED ACCOUNT WORK</p><h2 id="importDialogTitle">Import work from this browser?</h2></div></div>
+    <p class="account-status" id="importSummary">You have work from before you signed in.</p>
+    <div class="account-form"><button class="primary" id="importGuestWork" type="button">Import to my account</button><button class="secondary" id="skipGuestImport" type="button">Not now</button><p class="form-note">Choosing “Not now” keeps the browser copy intact. It will reappear when you sign out.</p></div>
+  </dialog>
+  <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
   <script src="./app.js"></script>
