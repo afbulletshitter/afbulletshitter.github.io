@@ -289,11 +289,11 @@ function addRule(from,to){
   saveRules();renderRules();render();return true;
 }
 
-function renderAcronymTable(entries,query,results,meta,emptyMessage,metaText){
+function renderAcronymTable(entries,query,results,meta,emptyMessage,metaText,displayLimit=Infinity){
   const term=query.trim().toLowerCase();
   const matches=entries.filter(([short,definition])=>!term||short.toLowerCase().includes(term)||definition.toLowerCase().includes(term));
   results.replaceChildren();
-  matches.forEach(([short,definition])=>{
+  matches.slice(0,displayLimit).forEach(([short,definition])=>{
     const row=document.createElement('tr');
     const acronym=document.createElement('td');acronym.textContent=short;
     const meaning=document.createElement('td');meaning.textContent=definition;
@@ -311,7 +311,7 @@ function renderAcronymTable(entries,query,results,meta,emptyMessage,metaText){
   meta.textContent=metaText(matches.length,entries.length);
 }
 function renderAcronyms(query=''){renderAcronymTable(ACRONYMS,query,els.results,els.resultsMeta,'No approved acronyms match that search.',(shown,total)=>`AFPC update: 28 Oct 2024 · ${shown} of ${total} approved entries`)}
-function renderDodAcronyms(query=''){renderAcronymTable(DOD_ACRONYMS,query,els.dodResults,els.dodResultsMeta,'No DoD acronyms match that search.',(shown,total)=>`${shown} of ${total} DoD Dictionary entries`)}
+function renderDodAcronyms(query=''){renderAcronymTable(DOD_ACRONYMS,query,els.dodResults,els.dodResultsMeta,'No DoD acronyms match that search.',(shown,total)=>`${shown} matches in ${total} DoD Dictionary entries · showing ${Math.min(shown,250)}`,250)}
 async function loadDodAcronyms(){
   try{
     const response=await fetch('./dod-acronyms.json');if(!response.ok)throw new Error('unavailable');
