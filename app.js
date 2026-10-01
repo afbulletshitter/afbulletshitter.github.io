@@ -5,7 +5,8 @@ const els={
   estimate:$('#lineEstimate'),hint:$('#hint'),toast:$('#toast'),
   measurer:$('#measureBox'),phrase:$('#phraseInput'),
   replacement:$('#replacementInput'),ruleList:$('#ruleList'),search:$('#acronymSearch'),
-  results:$('#acronymResults'),resultsMeta:$('#resultsMeta')
+  results:$('#acronymResults'),resultsMeta:$('#resultsMeta'),dodSearch:$('#dodAcronymSearch'),
+  dodResults:$('#dodAcronymResults'),dodResultsMeta:$('#dodResultsMeta')
 };
 
 const FORM_WIDTH_MM=202.321;
@@ -29,6 +30,7 @@ function selectTab(tab){
     item.tabIndex=selected?0:-1;
     document.getElementById(item.getAttribute('aria-controls')).hidden=!selected;
   });
+  $('#workspaceTagline').textContent=tab.id==='tab-epb'?"Because your supervisor sure as shit ain't writing it.":'Making airman sound important, 5 minutes before the deadline.';
   if(tab.id==='tab-1206')requestAnimationFrame(syncPaperScale);
 }
 tabs.forEach((tab,index)=>{
@@ -105,6 +107,61 @@ const ACRONYMS=[
   ['UCMJ','UNIFORM CODE OF MILITARY JUSTICE'],['UEI','UNIT EFFECTIVENESS INSPECTION'],
   ['UTA','UNIT TRAINING ASSEMBLY'],['UTC','UNIT TYPE CODE'],['UXO','UNEXPLODED ORDNANCE'],
   ['WRM','WAR RESERVE MATERIEL'],['XAB','EXPEDITIONARY AIRBASE']
+];
+
+let DOD_ACRONYMS=[
+  ['A2/AD','ANTI-ACCESS/AREA DENIAL'],['AA','ASSEMBLY AREA'],['AAR','AFTER ACTION REVIEW'],['ABCT','ARMORED BRIGADE COMBAT TEAM'],
+  ['AC','ACTIVE COMPONENT'],['ACA','AIRSPACE CONTROL AUTHORITY'],['ACC','AIR COMPONENT COMMANDER'],['ACE','ALLIED COMMAND EUROPE'],
+  ['ACO','AIRSPACE CONTROL ORDER'],['ACP','AIRSPACE CONTROL PLAN'],['ADCON','ADMINISTRATIVE CONTROL'],['ADP','AUTOMATED DATA PROCESSING'],
+  ['AFCENT','UNITED STATES AIR FORCES CENTRAL'],['AFRICOM','UNITED STATES AFRICA COMMAND'],['AHA','AMMUNITION HOLDING AREA'],['AO','AREA OF OPERATIONS'],
+  ['AOR','AREA OF RESPONSIBILITY'],['APOD','AERIAL PORT OF DEBARKATION'],['APOE','AERIAL PORT OF EMBARKATION'],['ASCOPE','AREAS, STRUCTURES, CAPABILITIES, ORGANIZATIONS, PEOPLE, AND EVENTS'],
+  ['ASW','ANTISUBMARINE WARFARE'],['AT/FP','ANTITERRORISM/FORCE PROTECTION'],['ATO','AIR TASKING ORDER'],['BDA','BATTLE DAMAGE ASSESSMENT'],
+  ['BCT','BRIGADE COMBAT TEAM'],['BLOS','BEYOND LINE OF SIGHT'],['C2','COMMAND AND CONTROL'],['C2ISR','COMMAND AND CONTROL, INTELLIGENCE, SURVEILLANCE, AND RECONNAISSANCE'],
+  ['C4ISR','COMMAND, CONTROL, COMMUNICATIONS, COMPUTERS, INTELLIGENCE, SURVEILLANCE, AND RECONNAISSANCE'],['CA','CIVIL AFFAIRS'],['CAOC','COMBINED AIR OPERATIONS CENTER'],['CAP','CRISIS ACTION PLANNING'],
+  ['CAS','CLOSE AIR SUPPORT'],['CASEVAC','CASUALTY EVACUATION'],['CCDR','COMBATANT COMMANDER'],['CCIR','COMMANDER’S CRITICAL INFORMATION REQUIREMENT'],
+  ['CENTCOM','UNITED STATES CENTRAL COMMAND'],['CFLCC','COALITION FORCES LAND COMPONENT COMMANDER'],['CINC','COMMANDER IN CHIEF'],['CJCS','CHAIRMAN OF THE JOINT CHIEFS OF STAFF'],
+  ['CJTF','COMMANDER, JOINT TASK FORCE'],['COA','COURSE OF ACTION'],['COCOM','COMBATANT COMMAND'],['COG','CENTER OF GRAVITY'],
+  ['COMSEC','COMMUNICATIONS SECURITY'],['CONOPS','CONCEPT OF OPERATIONS'],['CONPLAN','CONCEPT PLAN'],['CONUS','CONTINENTAL UNITED STATES'],
+  ['COP','COMMON OPERATIONAL PICTURE'],['COOP','CONTINUITY OF OPERATIONS'],['COTS','COMMERCIAL OFF-THE-SHELF'],['CP','COMMAND POST'],
+  ['CRAF','CIVIL RESERVE AIR FLEET'],['CSAR','COMBAT SEARCH AND RESCUE'],['CT','COUNTERTERRORISM'],['CUI','CONTROLLED UNCLASSIFIED INFORMATION'],
+  ['DCA','DEFENSIVE COUNTERAIR'],['DCIP','DEFENSE CRITICAL INFRASTRUCTURE PROGRAM'],['DCO','DEFENSIVE CYBERSPACE OPERATIONS'],['DCSA','DEFENSE COUNTERINTELLIGENCE AND SECURITY AGENCY'],
+  ['DHA','DEFENSE HEALTH AGENCY'],['DHS','DEPARTMENT OF HOMELAND SECURITY'],['DIA','DEFENSE INTELLIGENCE AGENCY'],['DISA','DEFENSE INFORMATION SYSTEMS AGENCY'],
+  ['DLA','DEFENSE LOGISTICS AGENCY'],['DOD','DEPARTMENT OF DEFENSE'],['DODD','DEPARTMENT OF DEFENSE DIRECTIVE'],['DODI','DEPARTMENT OF DEFENSE INSTRUCTION'],
+  ['DOS','DEPARTMENT OF STATE'],['DSCA','DEFENSE SECURITY COOPERATION AGENCY'],['DSCA','DEFENSE SUPPORT OF CIVIL AUTHORITIES'],['DTG','DATE-TIME GROUP'],
+  ['EA','ELECTRONIC ATTACK'],['EEFI','ESSENTIAL ELEMENT OF FRIENDLY INFORMATION'],['EMCON','EMISSION CONTROL'],['EMS','ELECTROMAGNETIC SPECTRUM'],
+  ['EOD','EXPLOSIVE ORDNANCE DISPOSAL'],['EUCOM','UNITED STATES EUROPEAN COMMAND'],['EW','ELECTRONIC WARFARE'],['EXORD','EXECUTE ORDER'],
+  ['FDO','FLEXIBLE DETERRENT OPTION'],['FEBA','FORWARD EDGE OF THE BATTLE AREA'],['FEMA','FEDERAL EMERGENCY MANAGEMENT AGENCY'],['FHA','FOREIGN HUMANITARIAN ASSISTANCE'],
+  ['FID','FOREIGN INTERNAL DEFENSE'],['FISINT','FOREIGN INSTRUMENTATION SIGNALS INTELLIGENCE'],['FLOT','FORWARD LINE OF OWN TROOPS'],['FOB','FORWARD OPERATING BASE'],
+  ['FOC','FULL OPERATIONAL CAPABILITY'],['FOL','FORWARD OPERATING LOCATION'],['FON','FREEDOM OF NAVIGATION'],['FP','FORCE PROTECTION'],
+  ['FPCON','FORCE PROTECTION CONDITION'],['FRAGO','FRAGMENTARY ORDER'],['GCC','GEOGRAPHIC COMBATANT COMMANDER'],['GEOINT','GEOSPATIAL INTELLIGENCE'],
+  ['GFM','GLOBAL FORCE MANAGEMENT'],['GLOC','GROUND LINE OF COMMUNICATIONS'],['HADR','HUMANITARIAN ASSISTANCE AND DISASTER RELIEF'],['HARM','HIGH-SPEED ANTIRADIATION MISSILE'],
+  ['HCA','HUMANITARIAN AND CIVIC ASSISTANCE'],['HUMINT','HUMAN INTELLIGENCE'],['HVT','HIGH-VALUE TARGET'],['IA','INFORMATION ASSURANCE'],
+  ['IAMD','INTEGRATED AIR AND MISSILE DEFENSE'],['IC','INTELLIGENCE COMMUNITY'],['IED','IMPROVISED EXPLOSIVE DEVICE'],['IFF','IDENTIFICATION, FRIEND OR FOE'],
+  ['IGO','INTERGOVERNMENTAL ORGANIZATION'],['IMINT','IMAGERY INTELLIGENCE'],['INDOPACOM','UNITED STATES INDO-PACIFIC COMMAND'],['IO','INFORMATION OPERATIONS'],
+  ['IOC','INITIAL OPERATIONAL CAPABILITY'],['IPB','INTELLIGENCE PREPARATION OF THE BATTLESPACE'],['IR','INFORMATION REQUIREMENT'],['ISR','INTELLIGENCE, SURVEILLANCE, AND RECONNAISSANCE'],
+  ['J-1','MANPOWER AND PERSONNEL DIRECTORATE OF A JOINT STAFF'],['J-2','INTELLIGENCE DIRECTORATE OF A JOINT STAFF'],['J-3','OPERATIONS DIRECTORATE OF A JOINT STAFF'],['J-4','LOGISTICS DIRECTORATE OF A JOINT STAFF'],
+  ['J-5','PLANS DIRECTORATE OF A JOINT STAFF'],['J-6','COMMUNICATIONS SYSTEM DIRECTORATE OF A JOINT STAFF'],['J-7','TRAINING DIRECTORATE OF A JOINT STAFF'],['J-8','FORCE STRUCTURE, RESOURCE, AND ASSESSMENT DIRECTORATE OF A JOINT STAFF'],
+  ['JADC2','JOINT ALL-DOMAIN COMMAND AND CONTROL'],['JAOC','JOINT AIR OPERATIONS CENTER'],['JFACC','JOINT FORCE AIR COMPONENT COMMANDER'],['JFC','JOINT FORCE COMMANDER'],
+  ['JFLCC','JOINT FORCE LAND COMPONENT COMMANDER'],['JFMCC','JOINT FORCE MARITIME COMPONENT COMMANDER'],['JFSOCC','JOINT FORCE SPECIAL OPERATIONS COMPONENT COMMANDER'],['JIPOE','JOINT INTELLIGENCE PREPARATION OF THE OPERATIONAL ENVIRONMENT'],
+  ['JLOTS','JOINT LOGISTICS OVER-THE-SHORE'],['JOA','JOINT OPERATIONS AREA'],['JP','JOINT PUBLICATION'],['JPP','JOINT PLANNING PROCESS'],
+  ['JRSOI','JOINT RECEPTION, STAGING, ONWARD MOVEMENT, AND INTEGRATION'],['JTF','JOINT TASK FORCE'],['LNO','LIAISON OFFICER'],['LOC','LINE OF COMMUNICATIONS'],
+  ['LOGCAP','LOGISTICS CIVIL AUGMENTATION PROGRAM'],['LOS','LINE OF SIGHT'],['LZ','LANDING ZONE'],['MARFOR','MARINE CORPS FORCES'],
+  ['MCOO','MODIFIED COMBINED OBSTACLE OVERLAY'],['MDCOA','MOST DANGEROUS COURSE OF ACTION'],['MEDEVAC','MEDICAL EVACUATION'],['METL','MISSION-ESSENTIAL TASK LIST'],
+  ['METT-TC','MISSION, ENEMY, TERRAIN AND WEATHER, TROOPS AND SUPPORT AVAILABLE, TIME AVAILABLE, AND CIVIL CONSIDERATIONS'],['MISO','MILITARY INFORMATION SUPPORT OPERATIONS'],['MOA','MEMORANDUM OF AGREEMENT'],['MOU','MEMORANDUM OF UNDERSTANDING'],
+  ['MPA','MAJOR PERFORMANCE AREA'],['MPE','MISSION PARTNER ENVIRONMENT'],['NATO','NORTH ATLANTIC TREATY ORGANIZATION'],['NCO','NONCOMMISSIONED OFFICER'],
+  ['NEO','NONCOMBATANT EVACUATION OPERATION'],['NGO','NONGOVERNMENTAL ORGANIZATION'],['NIPRNET','NON-CLASSIFIED INTERNET PROTOCOL ROUTER NETWORK'],['NORTHCOM','UNITED STATES NORTHERN COMMAND'],
+  ['NSA','NATIONAL SECURITY AGENCY'],['NSC','NATIONAL SECURITY COUNCIL'],['OCONUS','OUTSIDE THE CONTINENTAL UNITED STATES'],['OCO','OFFENSIVE CYBERSPACE OPERATIONS'],
+  ['OGA','OTHER GOVERNMENT AGENCY'],['OPCON','OPERATIONAL CONTROL'],['OPLAN','OPERATION PLAN'],['OPORD','OPERATION ORDER'],
+  ['OPSEC','OPERATIONS SECURITY'],['OSINT','OPEN-SOURCE INTELLIGENCE'],['PIR','PRIORITY INTELLIGENCE REQUIREMENT'],['PNT','POSITIONING, NAVIGATION, AND TIMING'],
+  ['POA&M','PLAN OF ACTION AND MILESTONES'],['POC','POINT OF CONTACT'],['PR','PERSONNEL RECOVERY'],['PSYOP','PSYCHOLOGICAL OPERATIONS'],
+  ['QRF','QUICK REACTION FORCE'],['RFI','REQUEST FOR INFORMATION'],['ROE','RULES OF ENGAGEMENT'],['RSOI','RECEPTION, STAGING, ONWARD MOVEMENT, AND INTEGRATION'],
+  ['SA','SITUATIONAL AWARENESS'],['SACEUR','SUPREME ALLIED COMMANDER EUROPE'],['SAR','SEARCH AND RESCUE'],['SC','SECURITY COOPERATION'],
+  ['SCIF','SENSITIVE COMPARTMENTED INFORMATION FACILITY'],['SEAD','SUPPRESSION OF ENEMY AIR DEFENSES'],['SIGINT','SIGNALS INTELLIGENCE'],['SIPRNET','SECRET INTERNET PROTOCOL ROUTER NETWORK'],
+  ['SOF','SPECIAL OPERATIONS FORCES'],['SOFA','STATUS-OF-FORCES AGREEMENT'],['SOUTHCOM','UNITED STATES SOUTHERN COMMAND'],['SPACECOM','UNITED STATES SPACE COMMAND'],
+  ['SPOD','SEAPORT OF DEBARKATION'],['SPOE','SEAPORT OF EMBARKATION'],['STRATCOM','UNITED STATES STRATEGIC COMMAND'],['TACON','TACTICAL CONTROL'],
+  ['TACSAT','TACTICAL SATELLITE'],['TBI','TRAUMATIC BRAIN INJURY'],['TTP','TACTICS, TECHNIQUES, AND PROCEDURES'],['TRANSCOM','UNITED STATES TRANSPORTATION COMMAND'],
+  ['UAS','UNMANNED AIRCRAFT SYSTEM'],['UCMJ','UNIFORM CODE OF MILITARY JUSTICE'],['USG','UNITED STATES GOVERNMENT'],['UXO','UNEXPLODED ORDNANCE'],
+  ['WARNORD','WARNING ORDER'],['WMD','WEAPON OF MASS DESTRUCTION'],['WPS','WEAPONEERING SYSTEM'],['XO','EXECUTIVE OFFICER']
 ];
 
 let rules=loadRules();
@@ -232,10 +289,10 @@ function addRule(from,to){
   saveRules();renderRules();render();return true;
 }
 
-function renderAcronyms(query=''){
+function renderAcronymTable(entries,query,results,meta,emptyMessage,metaText){
   const term=query.trim().toLowerCase();
-  const matches=ACRONYMS.filter(([short,definition])=>!term||short.toLowerCase().includes(term)||definition.toLowerCase().includes(term));
-  els.results.replaceChildren();
+  const matches=entries.filter(([short,definition])=>!term||short.toLowerCase().includes(term)||definition.toLowerCase().includes(term));
+  results.replaceChildren();
   matches.forEach(([short,definition])=>{
     const row=document.createElement('tr');
     const acronym=document.createElement('td');acronym.textContent=short;
@@ -244,14 +301,23 @@ function renderAcronyms(query=''){
     const use=document.createElement('button');use.type='button';use.className='use-acronym';use.textContent='Use';
     use.setAttribute('aria-label',`Replace ${definition} with ${short}`);
     use.addEventListener('click',()=>{addRule(definition,short);notify(`${short} rule added`)});
-    action.append(use);row.append(acronym,meaning,action);els.results.append(row);
+    action.append(use);row.append(acronym,meaning,action);results.append(row);
   });
   if(!matches.length){
     const row=document.createElement('tr'),cell=document.createElement('td');
-    cell.colSpan=3;cell.className='no-results';cell.textContent='No approved acronyms match that search.';
-    row.append(cell);els.results.append(row);
+    cell.colSpan=3;cell.className='no-results';cell.textContent=emptyMessage;
+    row.append(cell);results.append(row);
   }
-  els.resultsMeta.textContent=`AFPC update: 28 Oct 2024 · ${matches.length} of ${ACRONYMS.length} approved entries`;
+  meta.textContent=metaText(matches.length,entries.length);
+}
+function renderAcronyms(query=''){renderAcronymTable(ACRONYMS,query,els.results,els.resultsMeta,'No approved acronyms match that search.',(shown,total)=>`AFPC update: 28 Oct 2024 · ${shown} of ${total} approved entries`)}
+function renderDodAcronyms(query=''){renderAcronymTable(DOD_ACRONYMS,query,els.dodResults,els.dodResultsMeta,'No DoD acronyms match that search.',(shown,total)=>`${shown} of ${total} DoD Dictionary entries`)}
+async function loadDodAcronyms(){
+  try{
+    const response=await fetch('./dod-acronyms.json');if(!response.ok)throw new Error('unavailable');
+    const entries=await response.json();if(!Array.isArray(entries)||!entries.length)throw new Error('invalid');
+    DOD_ACRONYMS=entries.filter(entry=>Array.isArray(entry)&&typeof entry[0]==='string'&&typeof entry[1]==='string');renderDodAcronyms(els.dodSearch.value);
+  }catch{els.dodResultsMeta.textContent=`Offline reference subset · ${DOD_ACRONYMS.length} entries`}
 }
 
 // A collapsible reference drawer stays available in both work areas.
@@ -473,11 +539,14 @@ $('#abbreviationForm').addEventListener('submit',event=>{event.preventDefault();
 $('#resetRules').addEventListener('click',()=>confirmAction($('#resetRules'),'Confirm reset',()=>{rules=DEFAULT_RULES.map(rule=>({...rule}));saveRules();renderRules();render();notify('Default replacements restored')}));
 $('#copyButton').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(currentOutput);notify('Formatted text copied')}catch{notify('Select and copy the text manually')}});
 els.search.addEventListener('input',()=>renderAcronyms(els.search.value));
+els.dodSearch.addEventListener('input',()=>renderDodAcronyms(els.dodSearch.value));
 const boxObserver=new ResizeObserver(syncPaperScale);
 document.querySelectorAll('.paper-shell').forEach(shell=>boxObserver.observe(shell));
 syncPaperScale();
 renderRules();
 renderAcronyms();
+renderDodAcronyms();
+void loadDodAcronyms();
 render();
 
 // Versioned snapshots retain the source, generated text, and abbreviation rules.
@@ -510,7 +579,7 @@ function showSavedBullets(){
     open.addEventListener('click',()=>{
       els.source.value=bullet.source;$('#bulletTitle').value=bullet.title;
       rules=bullet.rules.map(rule=>({...rule}));renderRules();render();
-      currentBulletId=bullet.id;$('#saveBulletButton').textContent='Save changes';
+      currentBulletId=bullet.id;$('#saveBulletButton').textContent='Update';
       resetBulletHistory();selectTab($('#tab-1206'));$('#sourceText').focus();notify('Saved bullet ready to edit');
     });
     const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Delete';remove.setAttribute('aria-label',`Delete ${bullet.title}`);
@@ -527,7 +596,7 @@ async function saveBullet(asCopy=false){
   const bullet={schemaVersion:1,id:existing?.id||makeId(),title,source:els.source.value,output:currentOutput,rules:rules.map(rule=>({...rule})),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const next=existing?savedBullets.map(row=>row.id===existing.id?bullet:row):[bullet,...savedBullets];
   if(storeBullets(next)){
-    currentBulletId=bullet.id;$('#saveBulletButton').textContent='Save changes';showSavedBullets();
+    currentBulletId=bullet.id;$('#saveBulletButton').textContent='Update';showSavedBullets();
     if(sessionUser()){
       $('#savedStatus').textContent='Saving to your account…';
       const synced=await upsertCloudBullet(bullet);
@@ -589,7 +658,7 @@ function showSavedReports(){
     const meta=document.createElement('time');meta.dateTime=report.updatedAt||report.createdAt;const parsedDate=new Date(report.updatedAt||report.createdAt);meta.textContent=`${report.type} · ${Number.isNaN(parsedDate.getTime())?'Saved report':parsedDate.toLocaleString()}`;
     const summary=document.createElement('p');summary.textContent=report.data?.name||report.data?.dutyTitle||'Untitled member';
     const actions=document.createElement('div');actions.className='saved-actions';const load=document.createElement('button');load.type='button';load.className='secondary';load.textContent='Edit';
-    load.addEventListener('click',()=>{currentReportId=report.id;$('#reportTitle').value=report.title;setReportType(report.type);setReportData(report.data);$('#saveReportButton').textContent='Save changes';selectTab($('#tab-epb'));window.scrollTo({top:0,behavior:'smooth'});notify('Saved report ready to edit')});
+    load.addEventListener('click',()=>{currentReportId=report.id;$('#reportTitle').value=report.title;setReportType(report.type);setReportData(report.data);$('#saveReportButton').textContent='Update';selectTab($('#tab-epb'));window.scrollTo({top:0,behavior:'smooth'});notify('Saved report ready to edit')});
     const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Delete';remove.addEventListener('click',()=>confirmAction(remove,'Confirm delete',()=>{if(storeReports(savedReports.filter(row=>row.id!==report.id))){void deleteCloudRecord('reports',report.id);showSavedReports();notify('Saved report deleted')}}));
     actions.append(load,remove);item.append(h,meta,summary,actions);list.append(item);
   });
@@ -600,7 +669,7 @@ async function saveReport(asCopy=false){
   const report={schemaVersion:1,id:existing?.id||makeId(),title,type:reportType,data:reportData(),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const next=existing?savedReports.map(row=>row.id===existing.id?report:row):[report,...savedReports];
   if(storeReports(next)){
-    currentReportId=report.id;$('#saveReportButton').textContent='Save changes';
+    currentReportId=report.id;$('#saveReportButton').textContent='Update';
     try{showSavedReports()}catch{$('#savedReportsStatus').textContent='Report saved. Refresh the page to reload the saved list.'}
     if(sessionUser()){
       $('#savedReportsStatus').textContent='Saving to your account…';

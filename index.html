@@ -10,7 +10,10 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#">BULLET SHITTER <span>v1.0</span></a>
+    <div class="brand-block">
+      <a class="brand" href="#">BULLET SHITTER <span>v1.0</span></a>
+      <div class="brand-message"><strong>Shit in, strat out</strong><small id="workspaceTagline">Making airman sound important, 5 minutes before the deadline.</small></div>
+    </div>
     <button class="profile-trigger" id="profileTrigger" type="button" aria-haspopup="dialog" aria-controls="accountDialog">
       <span class="profile-avatar" id="profileAvatar">?</span><span class="profile-copy"><b id="profileName">Sign in</b><small id="profileEmail">Save work to your account</small></span>
     </button>
@@ -19,13 +22,8 @@
     <nav class="tool-tabs" role="tablist" aria-label="Writing tools">
       <button class="tool-tab active" id="tab-1206" type="button" role="tab" aria-selected="true" aria-controls="panel-1206">1206 Bullet Builder</button>
       <button class="tool-tab" id="tab-epb" type="button" role="tab" aria-selected="false" aria-controls="panel-epb" tabindex="-1">EPB / OPB</button>
-      <button class="tool-tab" id="tab-alq" type="button" role="tab" aria-selected="false" aria-controls="panel-alq" tabindex="-1">ALQ Guide</button>
     </nav>
     <div id="panel-1206" role="tabpanel" aria-labelledby="tab-1206">
-      <section class="intro" aria-labelledby="title">
-        <p class="eyebrow">AWARD BULLET WORKBENCH</p><h1 id="title">Shit in, strat out</h1>
-        <p>Making airman sound important, 5 minutes before the deadline.</p>
-      </section>
       <section class="workspace stacked-workspace">
         <div class="editor-panel">
           <div class="controls-title"><span class="step">01</span><h2>Auto abbreviations</h2></div>
@@ -58,10 +56,6 @@
       </section>
     </div>
     <div id="panel-epb" role="tabpanel" aria-labelledby="tab-epb" hidden>
-      <section class="intro epb-intro" aria-labelledby="epbTitle">
-        <p class="eyebrow">PERFORMANCE BRIEF WORKBENCH</p><h1 id="epbTitle">Shit in, strat out</h1>
-        <p>Because your supervisor sure as shit ain't writing it.</p>
-      </section>
       <section class="report-toolbar" aria-label="Performance brief type and actions">
         <fieldset class="report-choice"><legend>Form type</legend>
           <label class="check-choice"><input type="checkbox" id="typeEPB" checked /><span><b>EPB</b><small>AF Form 716</small></span></label>
@@ -123,14 +117,6 @@
         </form>
       </section>
     </div>
-    <div id="panel-alq" role="tabpanel" aria-labelledby="tab-alq" hidden>
-      <section class="alq-panel" aria-labelledby="alqTitle">
-        <div class="alq-heading"><div><p class="eyebrow-flat">OFFICIAL WRITING REFERENCE</p><h1 id="alqTitle">ALQ Writing Guide</h1></div><a class="secondary alq-open" href="https://www.arpc.afrc.af.mil/Portals/4/ALQ%20Writing%20Guide.pdf" target="_blank" rel="noreferrer">Open full PDF</a></div>
-        <object class="alq-pdf" data="https://www.arpc.afrc.af.mil/Portals/4/ALQ%20Writing%20Guide.pdf#view=FitH" type="application/pdf" aria-label="Airman Leadership Qualities Writing Guide PDF">
-          <div class="pdf-fallback"><p>Your browser could not display the guide inside this tab.</p><a class="primary" href="https://www.arpc.afrc.af.mil/Portals/4/ALQ%20Writing%20Guide.pdf" target="_blank" rel="noreferrer">Open the official ALQ Writing Guide</a></div>
-        </object>
-      </section>
-    </div>
   </main>
   <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
     <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody"><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
@@ -140,6 +126,7 @@
         <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawer-saved">Saved</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-acronyms">Acronyms</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-thesaurus">Thesaurus</button>
+        <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-alq">ALQ</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-settings">Settings</button>
       </nav>
       <div class="drawer-panels">
@@ -159,6 +146,11 @@
             <div class="results-meta" id="resultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th><th></th></tr></thead><tbody id="acronymResults"></tbody></table></div>
             <a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">View AFPC source ↗</a>
           </div>
+          <div class="drawer-section"><h3>DoD dictionary acronyms</h3><p class="drawer-copy">Search the separate Department of Defense reference list. Select “Use” to add a result to your auto-abbreviation rules.</p>
+            <label class="search-label" for="dodAcronymSearch">Search acronym or definition<input id="dodAcronymSearch" type="search" placeholder="JTF, CONOPS, logistics…" autocomplete="off" /></label>
+            <div class="results-meta" id="dodResultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th><th></th></tr></thead><tbody id="dodAcronymResults"></tbody></table></div>
+            <a class="source-link" href="https://irp.fas.org/doddir/dod/jp1_02.pdf" target="_blank" rel="noreferrer">View DoD Dictionary source ↗</a>
+          </div>
         </section>
         <section id="drawer-thesaurus" class="drawer-panel" role="tabpanel" hidden>
           <div class="drawer-section"><h3>Thesaurus</h3><p class="drawer-copy">Search for synonyms and definitions without leaving your draft. Select any result to explore that word.</p>
@@ -166,6 +158,20 @@
             <p class="external-search-note" id="thesaurusStatus">Definitions and synonyms are provided by Datamuse, with an offline Air Force writing fallback.</p>
             <div id="thesaurusSuggestion" class="spelling-suggestion" hidden></div>
             <div id="thesaurusResults" class="thesaurus-results" aria-live="polite"></div>
+          </div>
+        </section>
+        <section id="drawer-alq" class="drawer-panel" role="tabpanel" hidden>
+          <div class="drawer-section alq-reference"><h3>ALQ writing guide</h3><p class="drawer-copy">A scanner-friendly quick reference for writing performance statements with Airman Leadership Qualities.</p>
+            <div class="alq-callout"><strong>Performance statement basics</strong><p>Use a standalone sentence in plain language. State the action and at least one impact or result. Keep it concise, avoid uncommon acronyms, and write so someone outside the career field can understand it.</p></div>
+            <h4>Executing the Mission</h4>
+            <dl><dt>Job Proficiency</dt><dd>Demonstrates knowledge and professional skill to produce quality mission results.</dd><dt>Initiative</dt><dd>Acts independently, identifies needs, and takes appropriate action without waiting to be told.</dd><dt>Adaptability</dt><dd>Adjusts effectively to changing conditions, priorities, information, and obstacles.</dd></dl>
+            <h4>Leading People</h4>
+            <dl><dt>Inclusion &amp; Teamwork</dt><dd>Works across differences, builds trust, and contributes to a team where people can succeed.</dd><dt>Emotional Intelligence</dt><dd>Recognizes and manages emotions while responding constructively to others.</dd><dt>Communication</dt><dd>Shares information clearly, listens effectively, and tailors the message to the audience.</dd></dl>
+            <h4>Managing Resources</h4>
+            <dl><dt>Stewardship</dt><dd>Uses people, time, funds, equipment, and facilities responsibly to accomplish the mission.</dd><dt>Accountability</dt><dd>Takes ownership of actions, decisions, standards, and results.</dd></dl>
+            <h4>Improving the Unit</h4>
+            <dl><dt>Decision Making</dt><dd>Uses available information, judgment, and risk assessment to choose effective action.</dd><dt>Innovation</dt><dd>Finds and applies better ways to solve problems, improve processes, and increase effectiveness.</dd></dl>
+            <a class="source-link" href="https://www.arpc.afrc.af.mil/Services/Evaluations/" target="_blank" rel="noreferrer">View official ARPC evaluation resources ↗</a>
           </div>
         </section>
         <section id="drawer-settings" class="drawer-panel" role="tabpanel" hidden>
