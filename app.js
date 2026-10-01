@@ -338,6 +338,7 @@ function notify(message){els.toast.textContent=message;els.toast.classList.add('
 // Email/password accounts are handled by Supabase Auth once the owner supplies
 // this site's public project URL and anon key in auth-config.js.
 const AUTH_SESSION_KEY='bullet-shitter-auth-session-v1';
+const PENDING_SYNC_KEY='bullet-shitter-pending-sync-v1';
 const authConfig=globalThis.BULLET_SHITTER_AUTH||{};
 const accountDialog=$('#accountDialog');
 let authSession=null;
@@ -350,9 +351,14 @@ async function authRequest(path,{method='POST',body,token}={}){
   if(!response.ok)throw new Error(data.msg||data.message||data.error_description||'Account request failed.');
   return data;
 }
-async function dataRequest(table,{method='GET',query='select=*',body,prefer}={}){
+async function dataRequest(table,{method='GET',query='select=*',body,prefer,_retried=false}={}){
   if(!authSession?.access_token)throw new Error('Sign in to use account storage.');
   const response=await fetch(`${authConfig.supabaseUrl.replace(/\/$/,'')}/rest/v1/${table}${query?`?${query}`:''}`,{method,headers:{apikey:authConfig.anonKey,Authorization:`Bearer ${authSession.access_token}`,'Content-Type':'application/json',...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+  if(response.status===401&&!_retried&&authSession?.refresh_token){
+    const refreshed=await authRequest('token?grant_type=refresh_token',{body:{refresh_token:authSession.refresh_token}});
+    saveAuthSession(refreshed);
+    return dataRequest(table,{method,query,body,prefer,_retried:true});
+  }
   const data=response.status===204?null:await response.json().catch(()=>null);
   if(!response.ok)throw new Error(data?.message||data?.hint||'Account storage is unavailable.');
   return data;
@@ -454,7 +460,7 @@ function showSavedBullets(){
     actions.append(open,remove);item.append(title,date,text,actions);list.append(item);
   });
 }
-function saveBullet(asCopy=false){
+async function saveBullet(asCopy=false){
   const title=$('#bulletTitle').value.trim();
   if(!title){notify('Give the bullet a title.');return}
   if(!els.source.value.trim()){notify('Write a bullet before saving.');return}
@@ -462,10 +468,17 @@ function saveBullet(asCopy=false){
   const existing=!asCopy&&currentBulletId?savedBullets.find(row=>row.id===currentBulletId):null;
   const bullet={schemaVersion:1,id:existing?.id||makeId(),title,source:els.source.value,output:currentOutput,rules:rules.map(rule=>({...rule})),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const next=existing?savedBullets.map(row=>row.id===existing.id?bullet:row):[bullet,...savedBullets];
-  if(storeBullets(next)){currentBulletId=bullet.id;$('#saveBulletButton').textContent='Save changes';showSavedBullets();void upsertCloudBullet(bullet);notify(existing?'Changes saved':'Bullet saved')}
+  if(storeBullets(next)){
+    currentBulletId=bullet.id;$('#saveBulletButton').textContent='Save changes';showSavedBullets();
+    if(sessionUser()){
+      $('#savedStatus').textContent='Saving to your account…';
+      const synced=await upsertCloudBullet(bullet);
+      notify(synced?(existing?'Changes saved to account':'Bullet saved to account'):'Saved on this device; account sync queued');
+    }else notify(existing?'Changes saved on this device':'Bullet saved on this device');
+  }
 }
-$('#saveBulletForm').addEventListener('submit',event=>{event.preventDefault();saveBullet(false)});
-$('#saveBulletCopyButton').addEventListener('click',()=>saveBullet(true));
+$('#saveBulletForm').addEventListener('submit',event=>{event.preventDefault();void saveBullet(false)});
+$('#saveBulletCopyButton').addEventListener('click',()=>void saveBullet(true));
 let clearConfirmStep=0,clearConfirmTimer;
 function resetClearConfirm(){clearConfirmStep=0;clearTimeout(clearConfirmTimer);const button=$('#clearContentsButton');button.textContent='Clear Contents';button.classList.remove('confirming','really-confirming')}
 $('#clearContentsButton').addEventListener('click',()=>{
@@ -523,14 +536,22 @@ function showSavedReports(){
     actions.append(load,remove);item.append(h,meta,summary,actions);list.append(item);
   });
 }
-function saveReport(asCopy=false){
+async function saveReport(asCopy=false){
   const title=$('#reportTitle').value.trim();if(!title){notify('Give the report a title.');return}
   const existing=!asCopy&&currentReportId?savedReports.find(row=>row.id===currentReportId):null;
   const report={schemaVersion:1,id:existing?.id||makeId(),title,type:reportType,data:reportData(),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const next=existing?savedReports.map(row=>row.id===existing.id?report:row):[report,...savedReports];
-  if(storeReports(next)){currentReportId=report.id;$('#saveReportButton').textContent='Save changes';void upsertCloudReport(report);try{showSavedReports()}catch{$('#savedReportsStatus').textContent='Report saved. Refresh the page to reload the saved list.'}notify(existing?'Report changes saved':'Report saved')}
+  if(storeReports(next)){
+    currentReportId=report.id;$('#saveReportButton').textContent='Save changes';
+    try{showSavedReports()}catch{$('#savedReportsStatus').textContent='Report saved. Refresh the page to reload the saved list.'}
+    if(sessionUser()){
+      $('#savedReportsStatus').textContent='Saving to your account…';
+      const synced=await upsertCloudReport(report);
+      notify(synced?(existing?'Report changes saved to account':'Report saved to account'):'Saved on this device; account sync queued');
+    }else notify(existing?'Report changes saved on this device':'Report saved on this device');
+  }
 }
-$('#saveReportForm').addEventListener('submit',event=>{event.preventDefault();saveReport(false)});$('#saveReportCopyButton').addEventListener('click',()=>saveReport(true));
+$('#saveReportForm').addEventListener('submit',event=>{event.preventDefault();void saveReport(false)});$('#saveReportCopyButton').addEventListener('click',()=>void saveReport(true));
 $('#reportForm').addEventListener('submit',event=>event.preventDefault());
 function clearReport(){currentReportId=null;$('#reportTitle').value='';$('#saveReportButton').textContent='Save report';setReportData({});notify('New blank form ready')}
 $('#newReportButton').addEventListener('click',()=>{if(Object.values(reportData()).some(value=>String(value).trim()))confirmAction($('#newReportButton'),'Are you sure you want to clear your work?',clearReport);else clearReport()});
@@ -566,26 +587,56 @@ $('#exportReportButton').addEventListener('click',exportOfficialForm);
 
 function cloudBulletRow(bullet){return{id:bullet.id,user_id:sessionUser().id,title:bullet.title,source:bullet.source,output:bullet.output,rules:bullet.rules,created_at:bullet.createdAt,updated_at:bullet.updatedAt}}
 function cloudReportRow(report){return{id:report.id,user_id:sessionUser().id,title:report.title,report_type:report.type,report_data:report.data,created_at:report.createdAt,updated_at:report.updatedAt}}
+function pendingSyncStorageKey(){const user=sessionUser();return user?`${PENDING_SYNC_KEY}:${user.id}`:null}
+function pendingCloudOperations(){
+  const key=pendingSyncStorageKey();if(!key)return[];
+  try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[]}catch{return[]}
+}
+function writePendingCloudOperations(operations){const key=pendingSyncStorageKey();if(!key)return;localStorage.setItem(key,JSON.stringify(operations))}
+function queueCloudOperation(operation){
+  const operations=pendingCloudOperations().filter(item=>!(item.table===operation.table&&item.id===operation.id));
+  operations.push({...operation,queued_at:new Date().toISOString()});writePendingCloudOperations(operations);
+}
+function removePendingCloudOperation(operation){writePendingCloudOperations(pendingCloudOperations().filter(item=>!(item.table===operation.table&&item.id===operation.id)))}
+async function executeCloudOperation(operation){
+  if(operation.action==='delete')return dataRequest(operation.table,{method:'DELETE',query:`id=eq.${encodeURIComponent(operation.id)}`});
+  return dataRequest(operation.table,{method:'POST',query:'on_conflict=id',body:operation.body,prefer:'resolution=merge-duplicates'});
+}
+async function syncCloudOperation(operation,statusSelector,successMessage){
+  if(!sessionUser())return false;
+  try{await executeCloudOperation(operation);removePendingCloudOperation(operation);$(statusSelector).textContent=successMessage;return true}
+  catch(error){queueCloudOperation(operation);$(statusSelector).textContent=`Saved on this device; account sync queued: ${error.message}`;return false}
+}
 async function upsertCloudBullet(bullet){
-  if(!sessionUser())return;
-  try{await dataRequest('bullets',{method:'POST',query:'on_conflict=id',body:cloudBulletRow(bullet),prefer:'resolution=merge-duplicates'});$('#savedStatus').textContent='Saved to your account.'}
-  catch(error){$('#savedStatus').textContent=`Saved on this device; account sync failed: ${error.message}`}
+  if(!sessionUser())return false;
+  return syncCloudOperation({action:'upsert',table:'bullets',id:bullet.id,body:cloudBulletRow(bullet)},'#savedStatus','Saved to your account.');
 }
 async function upsertCloudReport(report){
-  if(!sessionUser())return;
-  try{await dataRequest('reports',{method:'POST',query:'on_conflict=id',body:cloudReportRow(report),prefer:'resolution=merge-duplicates'});$('#savedReportsStatus').textContent='Saved to your account.'}
-  catch(error){$('#savedReportsStatus').textContent=`Saved on this device; account sync failed: ${error.message}`}
+  if(!sessionUser())return false;
+  return syncCloudOperation({action:'upsert',table:'reports',id:report.id,body:cloudReportRow(report)},'#savedReportsStatus','Saved to your account.');
 }
 async function deleteCloudRecord(table,id){
   if(!sessionUser())return;
-  try{await dataRequest(table,{method:'DELETE',query:`id=eq.${encodeURIComponent(id)}`})}catch(error){notify(`Deleted on this device; account sync failed: ${error.message}`)}
+  const selector=table==='bullets'?'#savedStatus':'#savedReportsStatus';
+  const synced=await syncCloudOperation({action:'delete',table,id},selector,'Deleted from your account.');
+  if(!synced)notify('Deleted on this device; account sync queued');
+}
+async function retryPendingSync(){
+  if(!sessionUser())return 0;
+  const operations=pendingCloudOperations();let remaining=operations.length;
+  for(const operation of operations){
+    try{await executeCloudOperation(operation);removePendingCloudOperation(operation);remaining--}catch{break}
+  }
+  const message=remaining?`${remaining} change${remaining===1?' is':'s are'} waiting to sync.`:'All account changes are synced.';
+  $('#savedStatus').textContent=message;$('#savedReportsStatus').textContent=message;return remaining;
 }
 function parseLocalLibrary(key){try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[]}catch{return[]}}
 function reloadLocalLibraries(){
   savedBullets=parseLocalLibrary(bulletStorageKey());savedReports=parseLocalLibrary(reportStorageKey());currentBulletId=null;currentReportId=null;
   $('#saveBulletButton').textContent='Save bullet';$('#saveReportButton').textContent='Save report';
-  $('#savedStatus').textContent=sessionUser()?'Saved to your account.':'Saved on this browser and device.';
-  $('#savedReportsStatus').textContent=sessionUser()?'Saved to your account.':'Saved on this browser and device.';
+  const pending=sessionUser()?pendingCloudOperations().length:0;
+  $('#savedStatus').textContent=sessionUser()?(pending?`${pending} change${pending===1?' is':'s are'} waiting to sync.`:'Saved to your account.'):'Saved on this browser and device.';
+  $('#savedReportsStatus').textContent=$('#savedStatus').textContent;
   showSavedBullets();showSavedReports();
 }
 async function initializeAccountStorage(){
@@ -600,6 +651,7 @@ async function initializeAccountStorage(){
       if(legacyReports.length)await dataRequest('reports',{method:'POST',query:'on_conflict=id',body:legacyReports.map(cloudReportRow),prefer:'resolution=merge-duplicates'});
       localStorage.setItem(LEGACY_CLAIM_KEY,user.id);
     }
+    await retryPendingSync();
     const [bulletRows,reportRows]=await Promise.all([dataRequest('bullets',{query:'select=*&order=updated_at.desc'}),dataRequest('reports',{query:'select=*&order=updated_at.desc'})]);
     savedBullets=(bulletRows||[]).map(row=>({schemaVersion:1,id:row.id,title:row.title,source:row.source||'',output:row.output||'',rules:Array.isArray(row.rules)?row.rules:[],createdAt:row.created_at,updatedAt:row.updated_at}));
     savedReports=(reportRows||[]).map(row=>({schemaVersion:1,id:row.id,title:row.title,type:row.report_type==='OPB'?'OPB':'EPB',data:row.report_data||{},createdAt:row.created_at,updatedAt:row.updated_at}));
@@ -619,3 +671,4 @@ async function consumeAuthCallback(){
 
 setReportType('EPB');updateReportCounts();showSavedReports();
 void consumeAuthCallback().then(consumed=>{if(!consumed)return restoreAccountSession()});
+window.addEventListener('online',()=>void retryPendingSync());
