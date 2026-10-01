@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#081a33" />
+  <title>Bullet Shitter v1.0</title>
+  <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#">BULLET SHITTER <span>v1.0</span></a>
+    <button class="profile-trigger" id="profileTrigger" type="button" aria-haspopup="dialog" aria-controls="accountDialog">
+      <span class="profile-avatar" id="profileAvatar">?</span><span class="profile-copy"><b id="profileName">Sign in</b><small id="profileEmail">Save work to your account</small></span>
+    </button>
+  </header>
+  <main>
+    <nav class="tool-tabs" role="tablist" aria-label="Writing tools">
+      <button class="tool-tab active" id="tab-1206" type="button" role="tab" aria-selected="true" aria-controls="panel-1206">1206 Bullet Builder</button>
+      <button class="tool-tab" id="tab-epb" type="button" role="tab" aria-selected="false" aria-controls="panel-epb" tabindex="-1">EPB / OPB</button>
+    </nav>
+    <div id="panel-1206" role="tabpanel" aria-labelledby="tab-1206">
+      <section class="intro" aria-labelledby="title">
+        <p class="eyebrow">AWARD BULLET WORKBENCH</p><h1 id="title">Shit in, strat out</h1>
+        <p>Making airman sound important, 5 minutes before the deadline.</p>
+      </section>
+      <section class="workspace stacked-workspace">
+        <div class="editor-panel">
+          <div class="controls-title"><span class="step">01</span><h2>Auto abbreviations</h2></div>
+          <p class="section-help">Create replacements that run automatically in the preview. Your original draft stays unchanged.</p>
+          <form id="abbreviationForm" class="abbreviation-form">
+            <label>Word or phrase<input id="phraseInput" type="text" autocomplete="off" placeholder="and" /></label>
+            <label>Replace with<input id="replacementInput" type="text" autocomplete="off" placeholder="&amp;" /></label>
+            <button class="primary add-rule" type="submit">Add rule</button>
+          </form>
+          <div class="rules-head"><span>Active rules</span><button class="text-button" id="resetRules" type="button">Reset</button></div>
+          <div id="ruleList" class="rule-list"></div>
+          <div class="section-gap"></div>
+          <div class="panel-heading">
+            <div><span class="step">02</span><h2>Write</h2></div>
+            <div class="compact-actions">
+              <button class="arrow-button" id="undoButton" type="button" aria-label="Undo text change" title="Undo" disabled>↶</button>
+              <button class="arrow-button" id="redoButton" type="button" aria-label="Redo text change" title="Redo" disabled>↷</button>
+              <button class="clear-confirm-button" id="clearContentsButton" type="button">Clear Contents</button>
+            </div>
+          </div>
+          <div class="paper-shell write-shell"><div class="paper"><textarea aria-label="Write your text" id="sourceText" spellcheck="true" wrap="soft">- Led 12-person team through rapid system upgrade—cut processing time 34% and restored mission capability 2 days early</textarea></div></div>
+          <div class="counter-row"><span id="charCount">0 characters</span><span id="lineEstimate">0 bullet lines</span></div>
+        </div>
+        <div class="preview-panel">
+          <div class="panel-heading preview-heading"><div><span class="step">03</span><h2>Preview</h2></div></div>
+          <div class="paper-shell"><div class="paper" id="paper"><div id="fitBox" class="fit-box"><div id="previewText"></div></div></div></div>
+          <div class="preview-actions"><button class="secondary" id="copyButton" type="button">Copy text</button></div>
+          <p class="hint" id="hint">Each line is optimized with U+2004 or U+2006 spaces while preserving 12-point Times New Roman.</p>
+        </div>
+      </section>
+    </div>
+    <div id="panel-epb" role="tabpanel" aria-labelledby="tab-epb" hidden>
+      <section class="intro epb-intro" aria-labelledby="epbTitle">
+        <p class="eyebrow">PERFORMANCE BRIEF WORKBENCH</p><h1 id="epbTitle">Shit in, strat out</h1>
+        <p>Because your supervisor sure as shit ain't writing it.</p>
+      </section>
+      <section class="report-toolbar" aria-label="Performance brief type and actions">
+        <fieldset class="report-choice"><legend>Form type</legend>
+          <label class="check-choice"><input type="checkbox" id="typeEPB" checked /><span><b>EPB</b><small>AF Form 716</small></span></label>
+          <label class="check-choice"><input type="checkbox" id="typeOPB" /><span><b>OPB</b><small>AF Form 715</small></span></label>
+        </fieldset>
+        <div class="report-actions"><button class="secondary" id="newReportButton" type="button">New form</button><button class="primary" id="exportReportButton" type="button">Export official AF Form 716</button></div>
+      </section>
+      <p class="official-export-note">Exports the actual Air Force-published dynamic form with your entries. Open the downloaded PDF in Adobe Acrobat or Reader; browser viewers usually cannot display XFA forms.</p>
+      <section class="epb-workspace" aria-label="EPB and OPB form fields">
+        <form id="reportForm">
+          <div class="form-section">
+            <div class="section-title-row"><span class="step">01</span><div><h2>Identification</h2><p>Labels match the selected official performance brief.</p></div></div>
+            <div class="admin-grid">
+              <label>NAME (Last, First, Middle Initial, Suffix)<input data-report="name" maxlength="80" placeholder="DOE, JOHN A, JR." /></label><label>DoDID#<input data-report="dodid" inputmode="numeric" maxlength="10" placeholder="10-digit DoD ID" /></label>
+              <label>GRADE<select data-report="grade" id="gradeSelect"></select></label><label>DUTY TITLE<input data-report="dutyTitle" maxlength="100" placeholder="Official duty title" /></label>
+              <label>PERIOD — FROM (YYYYMMDD)<input data-report="fromDate" type="date" /></label><label>PERIOD — THRU (YYYYMMDD)<input data-report="thruDate" type="date" /></label>
+              <label>REASON<select data-report="reason" id="reasonSelect"></select></label><label>DAFSC<input data-report="dafsc" maxlength="12" /></label>
+              <label>DAYS SUPERVISED<input data-report="daysSupervised" type="number" min="0" max="9999" /></label><label>DAYS NON-RATED<input data-report="daysNonRated" type="number" min="0" max="9999" /></label>
+              <label>RATEE ACKNOWLEDGMENT<select data-report="rateeAcknowledgment"><option value=""></option><option>Digital</option><option>Manual</option><option>Member unable to sign</option><option>Member declined to sign</option></select></label><label>LOCATION<input data-report="location" maxlength="100" placeholder="Installation, State/Country" /></label>
+              <label class="span-2">ORGANIZATION AND COMMAND<input data-report="organization" maxlength="160" placeholder="Unit, group, wing, command" /></label>
+              <label class="span-2">DUTY DESCRIPTION<textarea class="admin-textarea" data-report="dutyDescription" maxlength="450"></textarea></label>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="section-title-row"><span class="step">02</span><div><h2>Major Performance Areas</h2><p>Each narrative is limited to 350 characters.</p></div></div>
+            <div class="epb-grid">
+              <label class="epb-field"><span class="epb-label-row"><span>EXECUTING THE MISSION</span><output data-count-for="executingMission">0 / 350</output></span><textarea data-report="executingMission" class="epb-textarea" maxlength="350" spellcheck="true"></textarea></label>
+              <label class="epb-field"><span class="epb-label-row"><span>LEADING PEOPLE</span><output data-count-for="leadingPeople">0 / 350</output></span><textarea data-report="leadingPeople" class="epb-textarea" maxlength="350" spellcheck="true"></textarea></label>
+              <label class="epb-field"><span class="epb-label-row"><span>MANAGING RESOURCES</span><output data-count-for="managingResources">0 / 350</output></span><textarea data-report="managingResources" class="epb-textarea" maxlength="350" spellcheck="true"></textarea></label>
+              <label class="epb-field"><span class="epb-label-row"><span>IMPROVING THE UNIT</span><output data-count-for="improvingUnit">0 / 350</output></span><textarea data-report="improvingUnit" class="epb-textarea" maxlength="350" spellcheck="true"></textarea></label>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="section-title-row"><span class="step">03</span><div><h2>Mandatory comments</h2></div></div>
+            <div class="admin-grid"><label class="span-2" id="mandatoryCommentsLabel">MANDATORY COMMENTS (FITNESS/HOUSING/VOTING)<textarea class="admin-textarea" data-report="mandatoryComments" maxlength="450"></textarea></label><label class="span-2">MANDATORY FITNESS COMMENTS<textarea class="admin-textarea" data-report="mandatoryFitnessComments" maxlength="450"></textarea></label></div>
+          </div>
+          <div class="form-section">
+            <div class="section-title-row"><span class="step">04</span><div><h2>Rater and higher level reviewer</h2></div></div>
+            <div class="admin-grid">
+              <label>RATER NAME (Last, First, Middle Initial), GRADE, BRANCH OF SERVICE<input data-report="raterName" maxlength="120" placeholder="DOE, JANE B, Maj, USAF" /></label><label>RATER DUTY TITLE<input data-report="raterDutyTitle" maxlength="100" /></label>
+              <label class="span-2">RATER ORGANIZATION AND COMMAND<input data-report="raterOrganization" maxlength="160" /></label>
+              <label class="span-2 epb-field"><span class="epb-label-row"><span>HIGHER LEVEL REVIEWER ASSESSMENT</span><output data-count-for="hlrAssessment">0 / 250</output></span><textarea data-report="hlrAssessment" class="epb-textarea" maxlength="250" spellcheck="true"></textarea></label>
+              <label>HIGHER LEVEL REVIEWER NAME (Last, First, Middle Initial), GRADE, BRANCH OF SERVICE<input data-report="hlrName" maxlength="120" placeholder="DOE, ALEX C, Col, USAF" /></label><label>HIGHER LEVEL REVIEWER DUTY TITLE<input data-report="hlrDutyTitle" maxlength="100" /></label>
+              <label class="span-2">HIGHER LEVEL REVIEWER ORGANIZATION AND COMMAND<input data-report="hlrOrganization" maxlength="160" /></label>
+            </div>
+          </div>
+          <div class="form-section epb-only" id="epbRecommendationSection">
+            <div class="section-title-row"><span class="step">05</span><div><h2>EPB recommendation</h2></div></div>
+            <div class="admin-grid">
+              <label>PROMOTION RECOMMENDATION<select data-report="promotionRecommendation"><option value=""></option><option>Promote Now</option><option>Must Promote</option><option>Promote</option><option>Not Ready Now</option></select></label>
+              <label>HIGHER LEVEL REVIEWER RESPONSIBILITY<select data-report="higherResponsibility"><option value=""></option><option>READY NOW</option><option>ON-TRACK</option><option>CURRENT ASSIGNMENT</option><option>GROOM</option><option>DO NOT RETAIN</option></select></label>
+              <label>FUTURE ROLE 1<input data-report="futureRole1" maxlength="80" /></label><label>FUTURE ROLE 2<input data-report="futureRole2" maxlength="80" /></label><label>FUTURE ROLE 3<input data-report="futureRole3" maxlength="80" /></label><label>STRATIFICATION<input data-report="stratification" maxlength="100" /></label>
+            </div>
+          </div>
+          <div class="form-section opb-only" id="opbStratificationSection" hidden>
+            <div class="section-title-row"><span class="step">05</span><div><h2>OPB stratification</h2><p>Official AF Form 715 stratification fields.</p></div></div>
+            <div class="admin-grid"><label>RATER STRATIFICATION<input data-report="raterStratification" maxlength="100" /></label><label>HIGHER LEVEL REVIEWER STRATIFICATION<input data-report="hlrStratification" maxlength="100" /></label></div>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+  <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
+    <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody"><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
+    <div class="drawer-body" id="drawerBody">
+      <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
+      <nav class="drawer-tabs" role="tablist" aria-label="Reference tools">
+        <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawer-saved">Saved</button>
+        <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-acronyms">Acronyms</button>
+        <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-thesaurus">Thesaurus</button>
+        <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-settings">Settings</button>
+      </nav>
+      <div class="drawer-panels">
+        <section id="drawer-saved" class="drawer-panel" role="tabpanel">
+          <div class="drawer-section"><h3>Saved bullets</h3>
+            <form id="saveBulletForm" class="drawer-save-form"><label for="bulletTitle">Bullet title</label><input id="bulletTitle" required maxlength="120" placeholder="Quarterly award — system upgrade" /><div><button type="submit" class="primary" id="saveBulletButton">Save bullet</button><button type="button" class="secondary" id="saveBulletCopyButton">Save as new</button></div></form>
+            <p id="savedStatus" role="status" class="section-help storage-note">Saved on this browser and device.</p><div id="savedBullets" class="saved-scroll"></div>
+          </div>
+          <div class="drawer-section"><h3>Saved EPB / OPB</h3>
+            <form id="saveReportForm" class="drawer-save-form"><label for="reportTitle">Report title</label><input id="reportTitle" required maxlength="120" placeholder="2026 SCOD EPB — Smith" /><div><button type="submit" class="primary" id="saveReportButton">Save report</button><button type="button" class="secondary" id="saveReportCopyButton">Save as new</button></div></form>
+            <p id="savedReportsStatus" role="status" class="section-help storage-note">Saved on this browser and device.</p><div id="savedReports" class="saved-scroll"></div>
+          </div>
+        </section>
+        <section id="drawer-acronyms" class="drawer-panel" role="tabpanel" hidden>
+          <div class="drawer-section"><h3 id="acronymTitle">Air Force acronyms</h3><p class="drawer-copy">Search the AFPC-approved list, then add an entry as an auto-abbreviation rule.</p>
+            <label class="search-label" for="acronymSearch">Search acronym or definition<input id="acronymSearch" type="search" placeholder="AFSC, training, command…" autocomplete="off" /></label>
+            <div class="results-meta" id="resultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th><th></th></tr></thead><tbody id="acronymResults"></tbody></table></div>
+            <a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">View AFPC source ↗</a>
+          </div>
+        </section>
+        <section id="drawer-thesaurus" class="drawer-panel" role="tabpanel" hidden>
+          <div class="drawer-section"><h3>Thesaurus.com</h3><p class="drawer-copy">Search Thesaurus.com for synonyms, antonyms, definitions, and examples. Results open in a new tab so your draft stays in place.</p>
+            <form id="thesaurusForm" class="lookup-form"><label for="thesaurusSearch">Search a word or phrase</label><div><input id="thesaurusSearch" type="search" autocomplete="off" placeholder="accomplished" required /><button class="primary" type="submit">Search</button></div></form>
+            <p class="external-search-note">Search results are provided directly by Thesaurus.com.</p>
+          </div>
+        </section>
+        <section id="drawer-settings" class="drawer-panel" role="tabpanel" hidden>
+          <div class="drawer-section"><h3>Settings</h3><p class="drawer-copy">Choose the base theme and add an independent warm page tint for late-night writing.</p>
+            <fieldset class="theme-choice"><legend>Appearance</legend><label><input type="radio" name="siteTheme" value="light" checked /><span>Light</span></label><label><input type="radio" name="siteTheme" value="dark" /><span>Dark</span></label></fieldset>
+            <label class="night-setting" for="nightHue"><span>Night light warmth</span><output id="nightHueOutput">0%</output><input id="nightHue" type="range" min="0" max="100" step="1" value="0" /></label>
+            <button class="secondary reset-settings" id="resetSettings" type="button">Reset appearance</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </aside>
+  <dialog class="account-dialog" id="accountDialog" aria-labelledby="accountDialogTitle">
+    <div class="account-dialog-head"><div><p class="eyebrow-flat">ACCOUNT</p><h2 id="accountDialogTitle">Sign in or create an account</h2></div><button class="icon-close" id="accountClose" type="button" aria-label="Close account window">×</button></div>
+    <p class="account-status" id="accountStatus" role="status">Use any valid email address. Email verification may be required.</p>
+    <form id="accountAuthForm" class="account-form">
+      <label>Display name<input id="accountDisplayName" autocomplete="name" maxlength="80" /></label>
+      <label>Email address<input id="accountEmail" type="email" autocomplete="email" required /></label>
+      <label>Password<input id="accountPassword" type="password" autocomplete="current-password" minlength="8" required /></label>
+      <div class="account-actions"><button class="primary" id="accountSignIn" type="submit">Sign in</button><button class="secondary" id="accountSignUp" type="button">Create account</button></div>
+      <button class="text-button account-recovery" id="accountRecovery" type="button">Forgot password?</button>
+    </form>
+    <form id="profileForm" class="account-form" hidden>
+      <label>Display name<input id="profileDisplayName" autocomplete="name" maxlength="80" /></label>
+      <label>Email address<input id="profileEmailInput" type="email" disabled /></label>
+      <label>New password (optional)<input id="profileNewPassword" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" /></label>
+      <div class="account-actions"><button class="primary" type="submit">Update profile</button><button class="secondary" id="accountSignOut" type="button">Sign out</button></div>
+    </form>
+  </dialog>
+  <div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./auth-config.js"></script>
+  <script src="./vendor/pdf-lib.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
