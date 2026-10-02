@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081a33" />
   <title>Bullet Shitter v1.0</title>
   <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
-  <link rel="stylesheet" href="./styles.css?v=1.0.5" />
+  <link rel="stylesheet" href="./styles.css?v=1.0.6" />
 </head>
 <body>
   <header class="topbar">
@@ -42,6 +42,12 @@
           <div class="paper-shell"><div class="paper" id="paper"><div id="fitBox" class="fit-box"><div id="previewText"></div></div></div></div>
           <div class="preview-actions"><button class="secondary" id="copyButton" type="button">Copy text</button></div>
           <p class="hint" id="hint">Each line is optimized with U+2004 or U+2006 spaces while preserving 12-point Times New Roman.</p>
+          <section class="abbreviations-section" aria-labelledby="abbreviationTitle">
+            <div class="controls-title"><span class="step">03</span><h2 id="abbreviationTitle">Auto abbreviations</h2></div>
+            <p class="section-help">Custom replacements change the preview only. Your original writing stays unchanged.</p>
+            <form id="abbreviationForm" class="abbreviation-form"><label>Word or phrase<input id="phraseInput" placeholder="and" autocomplete="off" /></label><label>Replace with<input id="replacementInput" placeholder="&amp;" autocomplete="off" /></label><button class="primary" type="submit">Add rule</button></form>
+            <div class="rules-head"><span>Active rules</span><button id="resetRules" class="text-button" type="button">Reset rules</button></div><div id="ruleList" class="rule-list"></div>
+          </section>
         </div>
       </section>
     </div>
@@ -113,7 +119,8 @@
     <div class="drawer-body" id="drawerBody">
       <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
       <nav class="drawer-tabs" role="tablist" aria-label="Reference tools">
-        <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawer-saved">Saved</button>
+        <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawer-saved">Saved bullets</button>
+        <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-reports">Saved EPB / OPB</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-acronyms">Acronyms</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-thesaurus">Thesaurus</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-alq">ALQ</button>
@@ -125,6 +132,8 @@
             <form id="saveBulletForm" class="drawer-save-form"><label for="bulletTitle">Bullet title</label><input id="bulletTitle" required maxlength="120" placeholder="Quarterly award — system upgrade" /><div><button type="submit" class="primary" id="saveBulletButton">Save bullet</button><button type="button" class="secondary" id="saveBulletCopyButton">Save as new</button></div></form>
             <p id="savedStatus" role="status" class="section-help storage-note">Saved on this browser and device.</p><div id="savedBullets" class="saved-scroll"></div>
           </div>
+        </section>
+        <section id="drawer-reports" class="drawer-panel" role="tabpanel" hidden>
           <div class="drawer-section"><h3>Saved EPB / OPB</h3>
             <form id="saveReportForm" class="drawer-save-form"><label for="reportTitle">Report title</label><input id="reportTitle" required maxlength="120" placeholder="2026 SCOD EPB — Smith" /><div><button type="submit" class="primary" id="saveReportButton">Save report</button><button type="button" class="secondary" id="saveReportCopyButton">Save as new</button></div></form>
             <p id="savedReportsStatus" role="status" class="section-help storage-note">Saved on this browser and device.</p><div id="savedReports" class="saved-scroll"></div>
@@ -132,6 +141,7 @@
         </section>
         <section id="drawer-acronyms" class="drawer-panel" role="tabpanel" hidden>
           <div class="drawer-section"><h3 id="acronymTitle">Air Force acronyms</h3><p class="drawer-copy">Search the AFPC-approved reference list by acronym or definition.</p>
+            <details class="acronym-guidance"><summary>Approved categories beyond the individual list</summary><p>AFPC guidance also permits commonly understood abbreviations in these categories: military ranks and tiers, office symbols, organizations at squadron level and above, weapons and platforms, and symbols or measurements.</p><p>Examples include SrA, SNCO, CC, DoD, F-16, lbs, MPH, hrs, percentages, dollar amounts, and fiscal years. The default is still to spell terms out; an abbreviation being listed does not mean it must be used.</p><a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">AFPC guidance and approved categories</a></details>
             <label class="search-label" for="acronymSearch">Search acronym or definition<input id="acronymSearch" type="search" placeholder="AFSC, training, command…" autocomplete="off" /></label>
             <div class="results-meta" id="resultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th></tr></thead><tbody id="acronymResults"></tbody></table></div>
             <a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">View AFPC source ↗</a>
@@ -151,16 +161,15 @@
           </div>
         </section>
         <section id="drawer-alq" class="drawer-panel" role="tabpanel" hidden>
-          <div class="drawer-section"><h3>ALQ writing guide</h3><p class="drawer-copy">The complete guide pages are displayed as regular website images—no embedded PDF.</p>
-            <div class="alq-page-stack">
-              <figure class="alq-page"><img src="./alq-page-09.jpg?v=1.0.5" alt="ALQ writing guide overview page" loading="lazy" decoding="async" /><figcaption>Page 1 of 7</figcaption></figure>
-              <figure class="alq-page"><img src="./alq-page-10.jpg?v=1.0.5" alt="ALQ evaluation transformation terminology page" loading="lazy" decoding="async" /><figcaption>Page 2 of 7</figcaption></figure>
-              <figure class="alq-page"><img src="./alq-page-11.jpg?v=1.0.5" alt="ALQ writing guide title page" loading="lazy" decoding="async" /><figcaption>Page 3 of 7</figcaption></figure>
-              <figure class="alq-page"><img src="./alq-page-12.jpg?v=1.0.5" alt="ALQ officer performance evaluation preparation document page" loading="lazy" decoding="async" /><figcaption>Page 4 of 7</figcaption></figure>
-              <figure class="alq-page"><img src="./alq-page-13.jpg?v=1.0.5" alt="ALQ proficiency levels and performance statements page" loading="lazy" decoding="async" /><figcaption>Page 5 of 7</figcaption></figure>
-              <figure class="alq-page"><img src="./alq-page-14.jpg?v=1.0.5" alt="Writing performance statements guidance page" loading="lazy" decoding="async" /><figcaption>Page 6 of 7</figcaption></figure>
-              <figure class="alq-page"><img src="./alq-page-15.jpg?v=1.0.5" alt="Competency-based Airman Leadership Qualities page" loading="lazy" decoding="async" /><figcaption>Page 7 of 7</figcaption></figure>
-            </div>
+          <div class="drawer-section"><h3>ALQ writing guide</h3><p class="drawer-copy">Five portrait pages. Zoom in and scroll sideways to read the original page images.</p>
+            <div class="alq-zoom-controls"><button id="alqZoomOut" class="secondary" type="button" aria-label="Zoom out ALQ guide">−</button><output id="alqZoomLabel">100%</output><button id="alqZoomIn" class="secondary" type="button" aria-label="Zoom in ALQ guide">+</button><button id="alqFit" class="secondary" type="button">Fit width</button></div>
+            <div class="alq-reader" id="alqReader" tabindex="0" aria-label="Scrollable ALQ guide pages"><div class="alq-page-stack" id="alqPages">
+              <figure class="alq-page"><img src="./alq-portrait-1.jpg?v=1.0.6" alt="ALQ guide page 1: overview and Air Force values" loading="lazy" decoding="async" width="1530" height="1980" /><figcaption>Page 1 of 5</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-portrait-2.jpg?v=1.0.6" alt="ALQ guide page 2: competency-based assessment" loading="lazy" decoding="async" width="1530" height="1980" /><figcaption>Page 2 of 5</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-portrait-3.jpg?v=1.0.6" alt="ALQ guide page 3: proficiency levels" loading="lazy" decoding="async" width="1530" height="1980" /><figcaption>Page 3 of 5</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-portrait-4.jpg?v=1.0.6" alt="ALQ guide page 4: writing performance statements" loading="lazy" decoding="async" width="1530" height="1980" /><figcaption>Page 4 of 5</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-portrait-5.jpg?v=1.0.6" alt="ALQ guide page 5: sample performance statements at all levels" loading="lazy" decoding="async" width="1530" height="1980" /><figcaption>Page 5 of 5</figcaption></figure>
+            </div></div>
             <a class="source-link" href="https://www.arpc.afrc.af.mil/Services/Evaluations/" target="_blank" rel="noreferrer">View official ARPC evaluation resources ↗</a>
           </div>
         </section>
@@ -211,6 +220,6 @@
   <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
-  <script src="./app.js?v=1.0.5"></script>
+  <script src="./app.js?v=1.0.6"></script>
 </body>
 </html>

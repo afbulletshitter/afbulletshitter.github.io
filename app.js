@@ -15,6 +15,14 @@ const PREVIEW_LINE_LIMIT=2;
 const NARROW_SPACE='\u2006';
 const WIDE_SPACE='\u2004';
 const FIELD_WIDTH_PX=FORM_WIDTH_MM*96/25.4;
+const RULES_KEY='tighttype-abbreviation-rules';
+const DEFAULT_RULES=[{from:'and',to:'&'}];
+let rules=DEFAULT_RULES.map(rule=>({...rule}));
+try{const stored=JSON.parse(localStorage.getItem(RULES_KEY)||'null');if(Array.isArray(stored))rules=stored.filter(rule=>rule&&typeof rule.from==='string'&&typeof rule.to==='string')}catch{}
+function escapeRegex(value){return value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function applyRules(value){let output=cleanText(value);[...rules].sort((a,b)=>b.from.length-a.from.length).forEach(rule=>{output=output.replace(new RegExp(`(^|[^A-Za-z0-9])${escapeRegex(rule.from)}(?=$|[^A-Za-z0-9])`,'gi'),(_,before)=>before+rule.to)});return output}
+function renderRules(){const list=$('#ruleList');list.replaceChildren();rules.forEach((rule,index)=>{const chip=document.createElement('div');chip.className='rule-chip';const text=document.createElement('span');text.textContent=`${rule.from} → ${rule.to}`;const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove ${rule.from} rule`);remove.addEventListener('click',()=>confirmAction(remove,'Confirm',()=>{rules.splice(index,1);saveRules()}));chip.append(text,remove);list.append(chip)})}
+function saveRules(){try{localStorage.setItem(RULES_KEY,JSON.stringify(rules))}catch{}renderRules();render();persistWorkspaceDraft()}
 function makeId(){return globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'?globalThis.crypto.randomUUID():`tt-${Date.now()}-${Math.random().toString(36).slice(2)}`}
 
 const tabs=[...document.querySelectorAll('.tool-tab')];
@@ -217,7 +225,7 @@ function optimizeSpaces(text){
 }
 
 function render(){
-  const optimized=optimizeSpaces(cleanText(els.source.value));
+  const optimized=optimizeSpaces(applyRules(els.source.value));
   currentOutput=optimized.text;
   const result=optimized.result;
   els.preview.textContent=currentOutput;
@@ -271,6 +279,9 @@ function selectDrawerTab(tab){
   drawerTabs.forEach(item=>{const selected=item===tab;item.classList.toggle('active',selected);item.setAttribute('aria-selected',String(selected));document.getElementById(item.getAttribute('aria-controls')).hidden=!selected});
 }
 drawerTabs.forEach(tab=>tab.addEventListener('click',()=>selectDrawerTab(tab)));
+let alqZoom=100;
+function setAlqZoom(value){alqZoom=Math.max(100,Math.min(400,value));$('#alqPages').style.width=`${alqZoom}%`;$('#alqZoomLabel').textContent=`${alqZoom}%`;$('#alqZoomOut').disabled=alqZoom===100;$('#alqZoomIn').disabled=alqZoom===400}
+$('#alqZoomIn').addEventListener('click',()=>setAlqZoom(alqZoom+25));$('#alqZoomOut').addEventListener('click',()=>setAlqZoom(alqZoom-25));$('#alqFit').addEventListener('click',()=>setAlqZoom(100));setAlqZoom(100);
 setDrawer(false);
 
 const APPEARANCE_KEY='bullet-shitter-appearance-v1';
@@ -346,10 +357,13 @@ function renderThesaurusEntry(word,definition,synonyms=[]){
   const results=$('#thesaurusResults');results.replaceChildren();
   const card=document.createElement('article');card.className='definition-card';
   const title=document.createElement('h4');title.textContent=word;
-  const copy=document.createElement('p');copy.textContent=definition||'No definition was returned for this word.';
+  const copy=document.createElement('ol');copy.className='definition-list';
+  const definitions=Array.isArray(definition)?definition:[definition];
+  [...new Set(definitions.filter(Boolean))].forEach(value=>{const item=document.createElement('li');item.textContent=value.replace(/^([a-z]+)\t/i,'$1 — ');copy.append(item)});
+  if(!copy.children.length){const item=document.createElement('li');item.textContent='No definition was returned for this word.';copy.append(item)}
   const label=document.createElement('div');label.className='part';label.textContent='Synonyms';
   const buttons=document.createElement('div');buttons.className='synonym-buttons';
-  synonyms.slice(0,18).forEach(item=>{const button=document.createElement('button');button.type='button';button.className='synonym-button';button.textContent=typeof item==='string'?item:item.word;button.addEventListener('click',()=>lookupThesaurus(button.textContent));buttons.append(button)});
+  synonyms.forEach(item=>{const button=document.createElement('button');button.type='button';button.className='synonym-button';button.textContent=typeof item==='string'?item:item.word;button.addEventListener('click',()=>lookupThesaurus(button.textContent));buttons.append(button)});
   card.append(title,copy,label,buttons);results.append(card);
 }
 function showSpellingSuggestion(word){
@@ -357,19 +371,24 @@ function showSpellingSuggestion(word){
   if(!word){holder.hidden=true;return}
   const text=document.createTextNode('Did you mean '),button=document.createElement('button');button.type='button';button.className='text-button';button.textContent=word;button.addEventListener('click',()=>lookupThesaurus(word));holder.append(text,button,document.createTextNode('?'));holder.hidden=false;
 }
+let lookupRequestId=0;
 async function lookupThesaurus(rawTerm){
   const term=rawTerm.trim();if(!term)return;$('#thesaurusSearch').value=term;$('#thesaurusStatus').textContent='Searching…';showSpellingSuggestion('');
+  const requestId=++lookupRequestId;
   try{
-    const encoded=encodeURIComponent(term),[headResponse,synResponse,sugResponse]=await Promise.all([fetch(`https://api.datamuse.com/words?sp=${encoded}&md=dp&qe=sp&max=1`),fetch(`https://api.datamuse.com/words?rel_syn=${encoded}&md=dp&max=24`),fetch(`https://api.datamuse.com/sug?s=${encoded}&max=3`)]);
-    if(!headResponse.ok||!synResponse.ok)throw new Error('lookup unavailable');
-    const [head,synonyms,suggestions]=await Promise.all([headResponse.json(),synResponse.json(),sugResponse.ok?sugResponse.json():[]]);
-    const exact=head.find(item=>item.word?.toLowerCase()===term.toLowerCase())||head[0];
-    const definition=(exact?.defs?.[0]||synonyms.find(item=>item.defs?.length)?.defs?.[0]||'').replace(/^[a-z]+\t/i,'');
-    if(!exact&&!synonyms.length)throw new Error('no match');
-    renderThesaurusEntry(exact?.word||term,definition,synonyms);
+    const encoded=encodeURIComponent(term),urls=[`https://api.datamuse.com/words?sp=${encoded}&md=dp&qe=sp&max=1`,`https://api.datamuse.com/words?rel_syn=${encoded}&md=dp&max=1000`,`https://api.datamuse.com/sug?s=${encoded}&max=3`,`https://api.dictionaryapi.dev/api/v2/entries/en/${encoded}`];
+    const [head,synonyms,suggestions,dictionary]=await Promise.all(urls.map(async url=>{try{const response=await fetch(url,{signal:AbortSignal.timeout(12000)});return response.ok?await response.json():[]}catch{return[]}}));
+    if(requestId!==lookupRequestId)return;
+    const exact=head.find(item=>item.word?.toLowerCase()===term.toLowerCase());
+    const definitions=[...(exact?.defs||[])],allSynonyms=[...synonyms.map(item=>item.word)];
+    if(Array.isArray(dictionary))dictionary.forEach(entry=>(entry.meanings||[]).forEach(meaning=>{allSynonyms.push(...(meaning.synonyms||[]));(meaning.definitions||[]).forEach(item=>{definitions.push(`${meaning.partOfSpeech} — ${item.definition}`);allSynonyms.push(...(item.synonyms||[]))})}));
+    if(!exact&&!definitions.length&&!allSynonyms.length)throw new Error('no match');
+    const uniqueSynonyms=[...new Set(allSynonyms.filter(word=>word.toLowerCase()!==term.toLowerCase()))];
+    renderThesaurusEntry(term,definitions,uniqueSynonyms);
     const suggestion=suggestions.find(item=>item.word?.toLowerCase()!==term.toLowerCase())?.word;showSpellingSuggestion(exact?.word?.toLowerCase()===term.toLowerCase()?'':suggestion);
-    $('#thesaurusStatus').textContent=`${synonyms.length} synonym${synonyms.length===1?'':'s'} found. Select one to explore it.`;
+    $('#thesaurusStatus').textContent=`${uniqueSynonyms.length} synonyms · ${definitions.length} available definitions. Select a synonym to explore it.`;
   }catch{
+    if(requestId!==lookupRequestId)return;
     const fallback=wordBankFallback(term);
     if(fallback?.word){renderThesaurusEntry(fallback.word,fallback.definition,fallback.synonyms);$('#thesaurusStatus').textContent='Showing the offline Air Force writing word bank.'}
     else{$('#thesaurusResults').replaceChildren();$('#thesaurusStatus').textContent='No definition or synonyms were found.';showSpellingSuggestion(fallback?.suggestion||'')}
@@ -418,6 +437,7 @@ async function dataRequest(table,{method='GET',query='select=*',body,prefer,_ret
 function sessionUser(){return authSession?.user||null}
 function displayNameFor(user){return user?.user_metadata?.display_name||user?.email?.split('@')[0]||'Profile'}
 let accountMode='signin';
+let draftReady=false,workspaceDraft=null,draftSyncTimer=null,draftScope=null,preferenceSyncChain=Promise.resolve();
 let pendingGuestImport=null;
 function switchAccountMode(mode){
   accountMode=mode==='signup'?'signup':'signin';
@@ -436,7 +456,7 @@ function renderAccount(){
   $('#settingsAccountStatus').textContent=signedIn?'Profile and appearance settings sync with this account.':'Sign in to update your profile and sync appearance settings.';
   if(signedIn){$('#profileDisplayName').value=displayNameFor(user);$('#profileEmailInput').value=user.email||''}
 }
-function saveAuthSession(session){authSession=session||null;try{session?localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session)):localStorage.removeItem(AUTH_SESSION_KEY)}catch{}renderAccount()}
+function saveAuthSession(session){const oldUserId=sessionUser()?.id||'guest',newUserId=session?.user?.id||'guest';if(draftReady&&oldUserId!==newUserId){persistWorkspaceDraft(false);clearTimeout(draftSyncTimer);clearTimeout(preferenceSyncTimer)}authSession=session||null;try{session?localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session)):localStorage.removeItem(AUTH_SESSION_KEY)}catch{}renderAccount();if(draftReady&&oldUserId!==newUserId)restoreWorkspaceDraft()}
 function openAccountDialog(mode='signin'){switchAccountMode(mode);accountDialog.showModal()}
 function openAccountSettings(){setDrawer(true);selectDrawerTab(document.querySelector('[aria-controls="drawer-settings"]'));$('#profileDisplayName').focus()}
 $('#profileTrigger').addEventListener('click',()=>{renderAccount();sessionUser()?openAccountSettings():openAccountDialog('signin')});
@@ -475,6 +495,8 @@ function applyBulletHistory(index){if(index<0||index>=bulletHistory.length)retur
 els.source.addEventListener('input',()=>{render();if(historyApplying)return;bulletHistory=bulletHistory.slice(0,bulletHistoryIndex+1);bulletHistory.push(els.source.value);if(bulletHistory.length>250)bulletHistory.shift();else bulletHistoryIndex++;updateHistoryButtons()});
 $('#undoButton').addEventListener('click',()=>applyBulletHistory(bulletHistoryIndex-1));
 $('#redoButton').addEventListener('click',()=>applyBulletHistory(bulletHistoryIndex+1));
+$('#abbreviationForm').addEventListener('submit',event=>{event.preventDefault();const from=$('#phraseInput').value.trim(),to=$('#replacementInput').value.trim();if(!from||!to)return;const existing=rules.find(rule=>rule.from.toLowerCase()===from.toLowerCase());if(existing)existing.to=to;else rules.push({from,to});$('#phraseInput').value='';$('#replacementInput').value='';saveRules()});
+$('#resetRules').addEventListener('click',()=>confirmAction($('#resetRules'),'Confirm reset',()=>{rules=DEFAULT_RULES.map(rule=>({...rule}));saveRules()}));
 $('#copyButton').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(currentOutput);notify('Formatted text copied')}catch{notify('Select and copy the text manually')}});
 els.search.addEventListener('input',()=>renderAcronyms(els.search.value));
 els.dodSearch.addEventListener('input',()=>renderDodAcronyms(els.dodSearch.value));
@@ -485,6 +507,7 @@ renderAcronyms();
 renderDodAcronyms();
 void loadDodAcronyms();
 render();
+renderRules();
 
 // Versioned snapshots retain source and generated text. The empty rules field preserves cloud-schema compatibility.
 const BULLETS_KEY='tighttype-saved-bullets-v1';
@@ -495,7 +518,7 @@ let currentBulletId=null;
 try{
   const stored=JSON.parse(localStorage.getItem(bulletStorageKey())||'[]');
   if(!Array.isArray(stored))throw new Error('Invalid saved data');
-  savedBullets=stored.filter(row=>row&&typeof row==='object').map(row=>({...row,id:row.id||makeId(),title:String(row.title||'Untitled bullet'),source:String(row.source||''),output:String(row.output||row.source||''),rules:[]}));
+  savedBullets=stored.filter(row=>row&&typeof row==='object').map(row=>({...row,id:row.id||makeId(),title:String(row.title||'Untitled bullet'),source:String(row.source||''),output:String(row.output||row.source||''),rules:Array.isArray(row.rules)?row.rules:DEFAULT_RULES.map(rule=>({...rule}))}));
 }catch{
   $('#savedStatus').textContent='Saved bullets could not be loaded. Browser storage may be unavailable.';
 }
@@ -515,9 +538,9 @@ function showSavedBullets(){
     const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Edit';
     open.addEventListener('click',()=>{
       els.source.value=bullet.source;$('#bulletTitle').value=bullet.title;
-      render();
+      rules=Array.isArray(bullet.rules)&&bullet.rules.length?bullet.rules.map(rule=>({...rule})):DEFAULT_RULES.map(rule=>({...rule}));renderRules();render();
       currentBulletId=bullet.id;$('#saveBulletButton').textContent='Update';
-      resetBulletHistory();selectTab($('#tab-1206'));$('#sourceText').focus();notify('Saved bullet ready to edit');
+      resetBulletHistory();selectTab($('#tab-1206'));persistWorkspaceDraft();$('#sourceText').focus();notify('Saved bullet ready to edit');
     });
     const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Delete';remove.setAttribute('aria-label',`Delete ${bullet.title}`);
     remove.addEventListener('click',()=>confirmAction(remove,'Confirm delete',()=>{if(storeBullets(savedBullets.filter(row=>row.id!==bullet.id))){void deleteCloudRecord('bullets',bullet.id);showSavedBullets();notify('Saved bullet deleted')}}));
@@ -530,7 +553,7 @@ async function saveBullet(asCopy=false){
   if(!els.source.value.trim()){notify('Write a bullet before saving.');return}
   render();
   const existing=!asCopy&&currentBulletId?savedBullets.find(row=>row.id===currentBulletId):null;
-  const bullet={schemaVersion:1,id:existing?.id||makeId(),title,source:els.source.value,output:currentOutput,rules:[],createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const bullet={schemaVersion:1,id:existing?.id||makeId(),title,source:els.source.value,output:currentOutput,rules:rules.map(rule=>({...rule})),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const next=existing?savedBullets.map(row=>row.id===existing.id?bullet:row):[bullet,...savedBullets];
   if(storeBullets(next)){
     currentBulletId=bullet.id;$('#saveBulletButton').textContent='Update';showSavedBullets();
@@ -652,15 +675,16 @@ $('#exportReportButton').addEventListener('click',exportOfficialForm);
 function cloudBulletRow(bullet){return{id:bullet.id,user_id:sessionUser().id,title:bullet.title,source:bullet.source,output:bullet.output,rules:bullet.rules,created_at:bullet.createdAt,updated_at:bullet.updatedAt}}
 function cloudReportRow(report){return{id:report.id,user_id:sessionUser().id,title:report.title,report_type:report.type,report_data:report.data,created_at:report.createdAt,updated_at:report.updatedAt}}
 let preferenceSyncTimer=null;
-function schedulePreferenceSync(){if(!sessionUser())return;clearTimeout(preferenceSyncTimer);preferenceSyncTimer=setTimeout(()=>void saveAccountPreferences(),500)}
+function schedulePreferenceSync(){if(!sessionUser())return;clearTimeout(preferenceSyncTimer);preferenceSyncTimer=setTimeout(()=>void saveAccountPreferences().catch(()=>{}),500)}
 async function saveAccountPreferences(){
   const user=sessionUser();if(!user)return false;
-  await dataRequest('profiles',{method:'POST',query:'on_conflict=user_id',body:{user_id:user.id,display_name:displayNameFor(user),preferences:{theme:appearance.theme,nightHue:appearance.nightHue},updated_at:new Date().toISOString()},prefer:'resolution=merge-duplicates'});return true;
+  const body={user_id:user.id,display_name:displayNameFor(user),preferences:{theme:appearance.theme,nightHue:appearance.nightHue,workspaceDraft},updated_at:new Date().toISOString()};
+  const task=preferenceSyncChain.catch(()=>{}).then(async()=>{if(sessionUser()?.id!==user.id)return false;await dataRequest('profiles',{method:'POST',query:'on_conflict=user_id',body,prefer:'resolution=merge-duplicates'});return true});preferenceSyncChain=task;return task;
 }
 function guestWorkSnapshot(){
   const bullets=parseLocalLibrary(BULLETS_KEY),reports=parseLocalLibrary(REPORTS_KEY),source=els.source.value.trim(),data=reportData();
   const defaultSource='- Led 12-person team through rapid system upgrade—cut processing time 34% and restored mission capability 2 days early';
-  return {bullets,reports,draft:source&&source!==defaultSource?{source,rules:[]}:null,reportDraft:Object.values(data).some(value=>String(value).trim())?{type:reportType,data}:null};
+  return {bullets,reports,draft:source&&source!==defaultSource?{source,rules:rules.map(rule=>({...rule}))}:null,reportDraft:Object.values(data).some(value=>String(value).trim())?{type:reportType,data}:null};
 }
 function guestWorkCount(snapshot){return (snapshot?.bullets?.length||0)+(snapshot?.reports?.length||0)+(snapshot?.draft?1:0)+(snapshot?.reportDraft?1:0)}
 function rememberGuestWork(){pendingGuestImport=guestWorkSnapshot();if(!guestWorkCount(pendingGuestImport)){forgetPendingGuestWork();return null}try{localStorage.setItem(PENDING_IMPORT_KEY,JSON.stringify(pendingGuestImport))}catch{}return pendingGuestImport}
@@ -672,8 +696,8 @@ function promptGuestImportIfNeeded(){
 }
 async function importGuestWork(){
   const snapshot=readPendingGuestWork(),now=new Date().toISOString();if(!snapshot||!sessionUser())return;
-  const bullets=[...(snapshot.bullets||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported bullet',source:row.source||'',output:row.output||row.source||'',rules:[],createdAt:row.createdAt||now,updatedAt:now}));
-  if(snapshot.draft)bullets.push({schemaVersion:1,id:makeId(),title:`Imported draft — ${new Date().toLocaleString()}`,source:snapshot.draft.source,output:optimizeSpaces(cleanText(snapshot.draft.source)).text,rules:[],createdAt:now,updatedAt:now});
+  const bullets=[...(snapshot.bullets||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported bullet',source:row.source||'',output:row.output||row.source||'',rules:Array.isArray(row.rules)?row.rules:DEFAULT_RULES,createdAt:row.createdAt||now,updatedAt:now}));
+  if(snapshot.draft)bullets.push({schemaVersion:1,id:makeId(),title:`Imported draft — ${new Date().toLocaleString()}`,source:snapshot.draft.source,output:optimizeSpaces(cleanText(snapshot.draft.source)).text,rules:snapshot.draft.rules||DEFAULT_RULES,createdAt:now,updatedAt:now});
   const reports=[...(snapshot.reports||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported report',type:row.type==='OPB'?'OPB':'EPB',data:row.data||{},createdAt:row.createdAt||now,updatedAt:now}));
   if(snapshot.reportDraft)reports.push({schemaVersion:1,id:makeId(),title:`Imported ${snapshot.reportDraft.type} draft — ${new Date().toLocaleString()}`,type:snapshot.reportDraft.type,data:snapshot.reportDraft.data,createdAt:now,updatedAt:now});
   if(bullets.length)await dataRequest('bullets',{method:'POST',query:'on_conflict=id',body:bullets.map(cloudBulletRow),prefer:'resolution=merge-duplicates'});
@@ -741,13 +765,15 @@ async function initializeAccountStorage({offerGuestImport=false}={}){
     const profileRows=await dataRequest('profiles',{query:`select=display_name,preferences&user_id=eq.${encodeURIComponent(user.id)}&limit=1`});
     const profile=profileRows?.[0];
     if(profile?.preferences&&typeof profile.preferences==='object'){
+      const remoteDraft=profile.preferences.workspaceDraft;
+      if(remoteDraft&&Number(remoteDraft.updatedAt)>Number(workspaceDraft?.updatedAt||0)){workspaceDraft=remoteDraft;try{localStorage.setItem(workspaceDraftKey(),JSON.stringify(remoteDraft))}catch{}applyWorkspaceDraft(remoteDraft)}
       const theme=profile.preferences.theme,nightHue=Number(profile.preferences.nightHue);if(theme==='light'||theme==='dark')appearance.theme=theme;if(Number.isFinite(nightHue))appearance.nightHue=Math.min(100,Math.max(0,nightHue));applyAppearance(false);
     }else await saveAccountPreferences();
     await retryPendingSync();
     const [bulletRows,reportRows]=await Promise.all([dataRequest('bullets',{query:'select=*&order=updated_at.desc'}),dataRequest('reports',{query:'select=*&order=updated_at.desc'})]);
     savedBullets=(bulletRows||[]).map(row=>({schemaVersion:1,id:row.id,title:row.title,source:row.source||'',output:row.output||'',rules:Array.isArray(row.rules)?row.rules:[],createdAt:row.created_at,updatedAt:row.updated_at}));
     savedReports=(reportRows||[]).map(row=>({schemaVersion:1,id:row.id,title:row.title,type:row.report_type==='OPB'?'OPB':'EPB',data:row.report_data||{},createdAt:row.created_at,updatedAt:row.updated_at}));
-    storeBullets(savedBullets);storeReports(savedReports);reloadLocalLibraries();if(offerGuestImport)promptGuestImportIfNeeded();
+    storeBullets(savedBullets);storeReports(savedReports);reloadLocalLibraries();if(workspaceDraft){applyWorkspaceDraft(workspaceDraft);void saveAccountPreferences().catch(()=>{})}if(offerGuestImport)promptGuestImportIfNeeded();
   }catch(error){$('#savedStatus').textContent=`Account connected; cloud storage needs setup: ${error.message}`;$('#savedReportsStatus').textContent=$('#savedStatus').textContent}
 }
 async function restoreAccountSession(){
@@ -761,6 +787,33 @@ async function consumeAuthCallback(){
   try{const user=await authRequest('user',{method:'GET',token:access_token});saveAuthSession({access_token,refresh_token,user,expires_in:Number(params.get('expires_in'))||3600,token_type:params.get('token_type')||'bearer'});history.replaceState(null,'',location.pathname+location.search);renderAccount();await initializeAccountStorage({offerGuestImport:true});openAccountSettings();$('#settingsAccountStatus').textContent=params.get('type')==='recovery'?'Enter a new password, then update your profile.':'Email verified. You are signed in.';return true}catch{return false}
 }
 
+function workspaceDraftKey(){return `bullet-shitter-workspace-draft-v1:${sessionUser()?.id||'guest'}`}
+function applyWorkspaceDraft(draft){
+  if(!draft||typeof draft!=='object')return;
+  els.source.value=typeof draft.source==='string'?draft.source:'';$('#bulletTitle').value=draft.bulletTitle||'';currentBulletId=draft.bulletId||null;
+  rules=Array.isArray(draft.rules)?draft.rules.filter(rule=>rule&&typeof rule.from==='string'&&typeof rule.to==='string'):DEFAULT_RULES.map(rule=>({...rule}));renderRules();render();resetBulletHistory();
+  currentReportId=draft.reportId||null;$('#reportTitle').value=draft.reportTitle||'';setReportType(draft.reportType==='OPB'?'OPB':'EPB');setReportData(draft.reportData||{});
+  $('#saveBulletButton').textContent=currentBulletId?'Update':'Save bullet';$('#saveReportButton').textContent=currentReportId?'Update':'Save report';
+  selectTab($(draft.activeTab==='tab-epb'?'#tab-epb':'#tab-1206'));
+}
+function restoreWorkspaceDraft(){
+  draftScope=sessionUser()?.id||'guest';workspaceDraft=null;
+  try{workspaceDraft=JSON.parse(localStorage.getItem(workspaceDraftKey())||'null')}catch{}
+  if(workspaceDraft)applyWorkspaceDraft(workspaceDraft);
+  else if(draftReady)applyWorkspaceDraft({source:'',rules:DEFAULT_RULES,reportData:{}});
+}
+function persistWorkspaceDraft(sync=true){
+  if(!draftReady||draftScope!==(sessionUser()?.id||'guest'))return;
+  workspaceDraft={updatedAt:Date.now(),source:els.source.value,bulletTitle:$('#bulletTitle').value,bulletId:currentBulletId,rules:rules.map(rule=>({...rule})),reportTitle:$('#reportTitle').value,reportId:currentReportId,reportType,reportData:reportData(),activeTab:document.querySelector('.tool-tab.active')?.id||'tab-1206'};
+  try{localStorage.setItem(workspaceDraftKey(),JSON.stringify(workspaceDraft))}catch{notify('Draft recovery storage is unavailable. Save a titled copy before leaving.')}
+  if(sync&&sessionUser()){clearTimeout(draftSyncTimer);draftSyncTimer=setTimeout(()=>void saveAccountPreferences().catch(()=>{}),1000)}
+}
 setReportType('EPB');updateReportCounts();showSavedReports();
+restoreWorkspaceDraft();draftReady=true;
+document.addEventListener('input',event=>{if(event.target.matches('#sourceText,#bulletTitle,#reportTitle,[data-report]'))persistWorkspaceDraft()});
+document.addEventListener('change',event=>{if(event.target.matches('[data-report],#typeEPB,#typeOPB'))persistWorkspaceDraft()});
+document.addEventListener('click',event=>{if(event.target.closest('#undoButton,#redoButton,#clearContentsButton,#newReportButton,.tool-tab,#savedBullets,#savedReports,#saveBulletButton,#saveReportButton,#saveBulletCopyButton,#saveReportCopyButton'))queueMicrotask(()=>persistWorkspaceDraft())});
+window.addEventListener('pagehide',()=>persistWorkspaceDraft(false));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')persistWorkspaceDraft()});
 void consumeAuthCallback().then(consumed=>{if(!consumed)return restoreAccountSession()});
-window.addEventListener('online',()=>void retryPendingSync());
+window.addEventListener('online',()=>{void retryPendingSync();if(sessionUser())void saveAccountPreferences().catch(()=>{})});
