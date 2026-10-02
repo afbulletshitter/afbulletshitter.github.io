@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081a33" />
   <title>Bullet Shitter v1.0</title>
   <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
-  <link rel="stylesheet" href="./styles.css?v=1.0.6" />
+  <link rel="stylesheet" href="./styles.css?v=1.0.7" />
 </head>
 <body>
   <header class="topbar">
@@ -115,7 +115,7 @@
     </div>
   </main>
   <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
-    <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody"><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
+    <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody" title="Click to open or close. Drag sideways to resize, or use the left and right arrow keys."><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
     <div class="drawer-body" id="drawerBody">
       <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
       <nav class="drawer-tabs" role="tablist" aria-label="Reference tools">
@@ -141,7 +141,23 @@
         </section>
         <section id="drawer-acronyms" class="drawer-panel" role="tabpanel" hidden>
           <div class="drawer-section"><h3 id="acronymTitle">Air Force acronyms</h3><p class="drawer-copy">Search the AFPC-approved reference list by acronym or definition.</p>
-            <details class="acronym-guidance"><summary>Approved categories beyond the individual list</summary><p>AFPC guidance also permits commonly understood abbreviations in these categories: military ranks and tiers, office symbols, organizations at squadron level and above, weapons and platforms, and symbols or measurements.</p><p>Examples include SrA, SNCO, CC, DoD, F-16, lbs, MPH, hrs, percentages, dollar amounts, and fiscal years. The default is still to spell terms out; an abbreviation being listed does not mean it must be used.</p><a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">AFPC guidance and approved categories</a></details>
+            <details class="acronym-guidance" open><summary>Approved categories beyond the individual list</summary>
+              <p>Performance Statements are the Air Force narrative-style of writing and consists of plain language words to communicate performance and achieve greater clarity to the broadest audience.</p>
+              <ul>
+                <li>Performance Statements avoid using acronyms and abbreviations.</li>
+                <li>Inclusion on this list is associated with broad understanding; not frequency of use or functional significance.</li>
+                <li>Inclusion on this list does not imply the acronym or abbreviation must be used; the default should be to spell out within Performance Statements.</li>
+              </ul>
+              <h4>Categories of approved acronyms and abbreviations</h4>
+              <ul>
+                <li>Common ranks/tiers across all services (SrA, Maj, Brig Gen, SNCO, etc...)</li>
+                <li>Common office symbols (CC, CMSAF, A4, JA, etc...)</li>
+                <li>Common organizations at squadron and above (CPTS, AFGSC, DoD, FBI, STARCOM, CCMD, FW, CJTF, etc...)</li>
+                <li>Common weapons and platforms (F-16, AIM-9, HH-60, MILSTAR, etc...)</li>
+                <li>Common symbols and measurements (lbs, MPH, $25B, 5%, hrs, FY23, etc...)</li>
+              </ul>
+              <a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">AFPC guidance and approved categories</a>
+            </details>
             <label class="search-label" for="acronymSearch">Search acronym or definition<input id="acronymSearch" type="search" placeholder="AFSC, training, command…" autocomplete="off" /></label>
             <div class="results-meta" id="resultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th></tr></thead><tbody id="acronymResults"></tbody></table></div>
             <a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">View AFPC source ↗</a>
@@ -220,6 +236,6 @@
   <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
-  <script src="./app.js?v=1.0.6"></script>
+  <script src="./app.js?v=1.0.7"></script>
 </body>
 </html>

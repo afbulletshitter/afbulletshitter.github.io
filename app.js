@@ -179,7 +179,30 @@ function syncPaperScale(){
   });
 }
 
-function cleanText(value){return value.replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim()}
+function cleanText(value){return value.replace(/\r\n?/g,'\n').replace(/[ \t]+/g,' ').split('\n').map(line=>line.trim()).join('\n').trim()}
+
+// Copy the rendered line breaks as well as the user's explicit newlines.
+function copyTextWithLineBreaks(text){
+  if(!text)return '';
+  els.measurer.textContent=text;
+  const node=els.measurer.firstChild,range=document.createRange();
+  const lineHeight=parseFloat(getComputedStyle(els.measurer).lineHeight)||19.2;
+  let output='',offset=0,previousTop=null;
+  for(const character of text){
+    if(character==='\n'){output+='\n';previousTop=null}
+    else{
+      range.setStart(node,offset);range.setEnd(node,offset+character.length);
+      const rect=range.getClientRects()[0];
+      if(rect){
+        if(previousTop!==null&&rect.top-previousTop>lineHeight/2)output+='\n';
+        previousTop=rect.top;
+      }
+      output+=character;
+    }
+    offset+=character.length;
+  }
+  return output;
+}
 
 const widthCanvas=document.createElement('canvas');
 const widthContext=widthCanvas.getContext('2d');
@@ -272,7 +295,46 @@ async function loadDodAcronyms(){
 // A collapsible reference drawer stays available in both work areas.
 const drawer=$('#utilityDrawer');
 function setDrawer(open){drawer.classList.toggle('collapsed',!open);document.body.classList.toggle('drawer-open',open);$('#drawerToggle').setAttribute('aria-expanded',String(open));$('#drawerBody').inert=!open;requestAnimationFrame(syncPaperScale)}
-$('#drawerToggle').addEventListener('click',()=>setDrawer(drawer.classList.contains('collapsed')));
+const drawerToggle=$('#drawerToggle'),DRAWER_WIDTH_KEY='bullet-shitter-tools-width-v1';
+let drawerDrag=null,suppressDrawerClick=false;
+function resizeDrawer(width){
+  const maximum=window.innerWidth,minimum=Math.min(320,maximum);
+  const next=Math.max(minimum,Math.min(maximum,width));
+  document.documentElement.style.setProperty('--drawer-width',`${next}px`);
+  requestAnimationFrame(syncPaperScale);
+  return next;
+}
+try{const savedWidth=Number(localStorage.getItem(DRAWER_WIDTH_KEY));if(savedWidth>0)resizeDrawer(savedWidth)}catch{}
+drawerToggle.addEventListener('click',()=>{if(suppressDrawerClick){suppressDrawerClick=false;return}setDrawer(drawer.classList.contains('collapsed'))});
+drawerToggle.addEventListener('pointerdown',event=>{
+  if(event.button!==0)return;
+  suppressDrawerClick=false;
+  drawerDrag={x:event.clientX,width:drawer.getBoundingClientRect().width,collapsed:drawer.classList.contains('collapsed'),moved:false};
+  drawerToggle.setPointerCapture(event.pointerId);
+});
+drawerToggle.addEventListener('pointermove',event=>{
+  if(!drawerDrag)return;
+  const delta=drawerDrag.x-event.clientX;
+  if(!drawerDrag.moved&&Math.abs(delta)<5)return;
+  drawerDrag.moved=true;document.body.classList.add('drawer-resizing');setDrawer(true);
+  resizeDrawer(drawerDrag.collapsed?window.innerWidth-event.clientX+drawerToggle.offsetWidth/2:drawerDrag.width+delta);
+});
+function finishDrawerResize(event){
+  if(!drawerDrag)return;
+  suppressDrawerClick=drawerDrag.moved;
+  if(drawerDrag.moved)try{localStorage.setItem(DRAWER_WIDTH_KEY,String(drawer.getBoundingClientRect().width))}catch{}
+  drawerDrag=null;document.body.classList.remove('drawer-resizing');
+  if(drawerToggle.hasPointerCapture(event.pointerId))drawerToggle.releasePointerCapture(event.pointerId);
+}
+drawerToggle.addEventListener('pointerup',finishDrawerResize);
+drawerToggle.addEventListener('pointercancel',finishDrawerResize);
+drawerToggle.addEventListener('keydown',event=>{
+  if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
+  event.preventDefault();setDrawer(true);
+  const width=resizeDrawer(drawer.getBoundingClientRect().width+(event.key==='ArrowLeft'?40:-40));
+  try{localStorage.setItem(DRAWER_WIDTH_KEY,String(width))}catch{}
+});
+window.addEventListener('resize',()=>{if(document.documentElement.style.getPropertyValue('--drawer-width'))resizeDrawer(drawer.getBoundingClientRect().width)});
 $('#drawerClose').addEventListener('click',()=>setDrawer(false));
 const drawerTabs=[...document.querySelectorAll('.drawer-tab')];
 function selectDrawerTab(tab){
@@ -497,7 +559,7 @@ $('#undoButton').addEventListener('click',()=>applyBulletHistory(bulletHistoryIn
 $('#redoButton').addEventListener('click',()=>applyBulletHistory(bulletHistoryIndex+1));
 $('#abbreviationForm').addEventListener('submit',event=>{event.preventDefault();const from=$('#phraseInput').value.trim(),to=$('#replacementInput').value.trim();if(!from||!to)return;const existing=rules.find(rule=>rule.from.toLowerCase()===from.toLowerCase());if(existing)existing.to=to;else rules.push({from,to});$('#phraseInput').value='';$('#replacementInput').value='';saveRules()});
 $('#resetRules').addEventListener('click',()=>confirmAction($('#resetRules'),'Confirm reset',()=>{rules=DEFAULT_RULES.map(rule=>({...rule}));saveRules()}));
-$('#copyButton').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(currentOutput);notify('Formatted text copied')}catch{notify('Select and copy the text manually')}});
+$('#copyButton').addEventListener('click',async()=>{try{render();await navigator.clipboard.writeText(copyTextWithLineBreaks(currentOutput));notify('Formatted text copied with line breaks')}catch{notify('Select and copy the text manually')}});
 els.search.addEventListener('input',()=>renderAcronyms(els.search.value));
 els.dodSearch.addEventListener('input',()=>renderDodAcronyms(els.dodSearch.value));
 const boxObserver=new ResizeObserver(syncPaperScale);
