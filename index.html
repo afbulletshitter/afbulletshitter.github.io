@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081a33" />
   <title>Bullet Shitter v1.0</title>
   <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
-  <link rel="stylesheet" href="./styles.css?v=1.0.4" />
+  <link rel="stylesheet" href="./styles.css?v=1.0.5" />
 </head>
 <body>
   <header class="topbar">
@@ -26,18 +26,8 @@
     <div id="panel-1206" role="tabpanel" aria-labelledby="tab-1206">
       <section class="workspace stacked-workspace">
         <div class="editor-panel">
-          <div class="controls-title"><span class="step">01</span><h2>Auto abbreviations</h2></div>
-          <p class="section-help">Create replacements that run automatically in the preview. Your original draft stays unchanged.</p>
-          <form id="abbreviationForm" class="abbreviation-form">
-            <label>Word or phrase<input id="phraseInput" type="text" autocomplete="off" placeholder="and" /></label>
-            <label>Replace with<input id="replacementInput" type="text" autocomplete="off" placeholder="&amp;" /></label>
-            <button class="primary add-rule" type="submit">Add rule</button>
-          </form>
-          <div class="rules-head"><span>Active rules</span><button class="text-button" id="resetRules" type="button">Reset</button></div>
-          <div id="ruleList" class="rule-list"></div>
-          <div class="section-gap"></div>
           <div class="panel-heading">
-            <div><span class="step">02</span><h2>Write</h2></div>
+            <div><span class="step">01</span><h2>Write</h2></div>
             <div class="compact-actions">
               <button class="arrow-button" id="undoButton" type="button" aria-label="Undo text change" title="Undo" disabled>↶</button>
               <button class="arrow-button" id="redoButton" type="button" aria-label="Redo text change" title="Redo" disabled>↷</button>
@@ -48,7 +38,7 @@
           <div class="counter-row"><span id="charCount">0 characters</span><span id="lineEstimate">0 bullet lines</span></div>
         </div>
         <div class="preview-panel">
-          <div class="panel-heading preview-heading"><div><span class="step">03</span><h2>Preview</h2></div></div>
+          <div class="panel-heading preview-heading"><div><span class="step">02</span><h2>Preview</h2></div></div>
           <div class="paper-shell"><div class="paper" id="paper"><div id="fitBox" class="fit-box"><div id="previewText"></div></div></div></div>
           <div class="preview-actions"><button class="secondary" id="copyButton" type="button">Copy text</button></div>
           <p class="hint" id="hint">Each line is optimized with U+2004 or U+2006 spaces while preserving 12-point Times New Roman.</p>
@@ -141,14 +131,14 @@
           </div>
         </section>
         <section id="drawer-acronyms" class="drawer-panel" role="tabpanel" hidden>
-          <div class="drawer-section"><h3 id="acronymTitle">Air Force acronyms</h3><p class="drawer-copy">Search the AFPC-approved list, then add an entry as an auto-abbreviation rule.</p>
+          <div class="drawer-section"><h3 id="acronymTitle">Air Force acronyms</h3><p class="drawer-copy">Search the AFPC-approved reference list by acronym or definition.</p>
             <label class="search-label" for="acronymSearch">Search acronym or definition<input id="acronymSearch" type="search" placeholder="AFSC, training, command…" autocomplete="off" /></label>
-            <div class="results-meta" id="resultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th><th></th></tr></thead><tbody id="acronymResults"></tbody></table></div>
+            <div class="results-meta" id="resultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th></tr></thead><tbody id="acronymResults"></tbody></table></div>
             <a class="source-link" href="https://www.afpc.af.mil/Career-Management/Acronyms/" target="_blank" rel="noreferrer">View AFPC source ↗</a>
           </div>
-          <div class="drawer-section"><h3>DoD dictionary acronyms</h3><p class="drawer-copy">Search the separate Department of Defense reference list. Select “Use” to add a result to your auto-abbreviation rules.</p>
+          <div class="drawer-section"><h3>DoD dictionary</h3><p class="drawer-copy">Search the separate Department of Defense reference list by acronym or definition.</p>
             <label class="search-label" for="dodAcronymSearch">Search acronym or definition<input id="dodAcronymSearch" type="search" placeholder="JTF, CONOPS, logistics…" autocomplete="off" /></label>
-            <div class="results-meta" id="dodResultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th><th></th></tr></thead><tbody id="dodAcronymResults"></tbody></table></div>
+            <div class="results-meta" id="dodResultsMeta"></div><div class="acronym-table-wrap"><table><thead><tr><th>Acronym</th><th>Definition</th></tr></thead><tbody id="dodAcronymResults"></tbody></table></div>
             <a class="source-link" href="https://irp.fas.org/doddir/dod/jp1_02.pdf" target="_blank" rel="noreferrer">View DoD Dictionary source ↗</a>
           </div>
         </section>
@@ -161,16 +151,16 @@
           </div>
         </section>
         <section id="drawer-alq" class="drawer-panel" role="tabpanel" hidden>
-          <div class="drawer-section alq-reference"><h3>ALQ writing guide</h3><p class="drawer-copy">A scanner-friendly quick reference for writing performance statements with Airman Leadership Qualities.</p>
-            <div class="alq-callout"><strong>Performance statement basics</strong><p>Use a standalone sentence in plain language. State the action and at least one impact or result. Keep it concise, avoid uncommon acronyms, and write so someone outside the career field can understand it.</p></div>
-            <h4>Executing the Mission</h4>
-            <dl><dt>Job Proficiency</dt><dd>Demonstrates knowledge and professional skill to produce quality mission results.</dd><dt>Initiative</dt><dd>Acts independently, identifies needs, and takes appropriate action without waiting to be told.</dd><dt>Adaptability</dt><dd>Adjusts effectively to changing conditions, priorities, information, and obstacles.</dd></dl>
-            <h4>Leading People</h4>
-            <dl><dt>Inclusion &amp; Teamwork</dt><dd>Works across differences, builds trust, and contributes to a team where people can succeed.</dd><dt>Emotional Intelligence</dt><dd>Recognizes and manages emotions while responding constructively to others.</dd><dt>Communication</dt><dd>Shares information clearly, listens effectively, and tailors the message to the audience.</dd></dl>
-            <h4>Managing Resources</h4>
-            <dl><dt>Stewardship</dt><dd>Uses people, time, funds, equipment, and facilities responsibly to accomplish the mission.</dd><dt>Accountability</dt><dd>Takes ownership of actions, decisions, standards, and results.</dd></dl>
-            <h4>Improving the Unit</h4>
-            <dl><dt>Decision Making</dt><dd>Uses available information, judgment, and risk assessment to choose effective action.</dd><dt>Innovation</dt><dd>Finds and applies better ways to solve problems, improve processes, and increase effectiveness.</dd></dl>
+          <div class="drawer-section"><h3>ALQ writing guide</h3><p class="drawer-copy">The complete guide pages are displayed as regular website images—no embedded PDF.</p>
+            <div class="alq-page-stack">
+              <figure class="alq-page"><img src="./alq-page-09.jpg?v=1.0.5" alt="ALQ writing guide overview page" loading="lazy" decoding="async" /><figcaption>Page 1 of 7</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-page-10.jpg?v=1.0.5" alt="ALQ evaluation transformation terminology page" loading="lazy" decoding="async" /><figcaption>Page 2 of 7</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-page-11.jpg?v=1.0.5" alt="ALQ writing guide title page" loading="lazy" decoding="async" /><figcaption>Page 3 of 7</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-page-12.jpg?v=1.0.5" alt="ALQ officer performance evaluation preparation document page" loading="lazy" decoding="async" /><figcaption>Page 4 of 7</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-page-13.jpg?v=1.0.5" alt="ALQ proficiency levels and performance statements page" loading="lazy" decoding="async" /><figcaption>Page 5 of 7</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-page-14.jpg?v=1.0.5" alt="Writing performance statements guidance page" loading="lazy" decoding="async" /><figcaption>Page 6 of 7</figcaption></figure>
+              <figure class="alq-page"><img src="./alq-page-15.jpg?v=1.0.5" alt="Competency-based Airman Leadership Qualities page" loading="lazy" decoding="async" /><figcaption>Page 7 of 7</figcaption></figure>
+            </div>
             <a class="source-link" href="https://www.arpc.afrc.af.mil/Services/Evaluations/" target="_blank" rel="noreferrer">View official ARPC evaluation resources ↗</a>
           </div>
         </section>
@@ -221,6 +211,6 @@
   <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
-  <script src="./app.js?v=1.0.4"></script>
+  <script src="./app.js?v=1.0.5"></script>
 </body>
 </html>

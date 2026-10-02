@@ -96,7 +96,6 @@ td{padding:11px 13px;border-bottom:1px solid #e4e9f0;font-size:14px;line-height:
 td:first-child{width:120px;color:var(--navy);font-weight:900;letter-spacing:.025em}
 td:last-child{width:92px;text-align:right}
 tbody tr:hover{background:#f6f9fc}
-.use-acronym{background:transparent;color:var(--blue);font-size:12px;padding:5px}
 .no-results{text-align:center!important;color:var(--muted)!important;font-weight:400!important;padding:28px!important}
 
 @media(max-width:900px){.intro{display:grid;grid-template-columns:auto 1fr;gap:10px 18px}
@@ -277,9 +276,9 @@ body.drawer-open{padding-right:var(--drawer-width)}
 .drawer-section .saved-item{padding:14px 0}.drawer-section .saved-item p{font-size:14px;max-height:84px;overflow:hidden}
 .drawer-section .saved-actions .secondary{height:36px;padding:0 12px}
 .drawer-section .search-label input{height:42px;font-size:14px;padding:0 10px}
-.drawer-section .acronym-table-wrap{max-height:480px}.drawer-section th,.drawer-section td{padding:9px 7px;font-size:12px}.drawer-section td:first-child{width:64px}.drawer-section td:last-child{width:42px}
+.drawer-section .acronym-table-wrap{max-height:480px}.drawer-section th,.drawer-section td{padding:9px 7px;font-size:12px}.drawer-section td:first-child{width:86px}.drawer-section .acronym-table-wrap td:last-child{width:auto;text-align:left}
 .source-link{display:inline-block;margin-top:12px;color:var(--blue);font-size:12px;font-weight:800;text-decoration:none}
-.alq-reference h4{margin:22px 0 8px;color:var(--navy);font:700 17px/1.2 Georgia,serif}.alq-reference dl{margin:0}.alq-reference dt{margin-top:11px;color:var(--ink);font-size:13px;font-weight:900}.alq-reference dd{margin:3px 0 0;color:var(--muted);font-size:13px;line-height:1.45}.alq-callout{padding:14px;border-left:4px solid var(--orange);background:#f3f6fa}.alq-callout strong{color:var(--navy)}.alq-callout p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+.alq-page-stack{display:grid;gap:18px}.alq-page{margin:0;padding:8px;background:#e8edf4;border:1px solid var(--line)}.alq-page img{display:block;width:100%;height:auto;background:#fff}.alq-page figcaption{padding:8px 2px 1px;color:var(--muted);font-size:11px;font-weight:800;text-align:right}
 .lookup-form{display:grid;gap:8px}.lookup-form>div{grid-template-columns:1fr auto}.lookup-form .primary{height:40px}
 .definition-card{margin-top:16px;padding:16px;border-left:4px solid var(--orange);background:#f3f6fa;color:var(--ink)}
 .definition-card h4{font:24px/1.1 Georgia,serif;color:var(--navy);text-transform:none;margin:0 0 5px}.definition-card .part{color:var(--orange);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.definition-card p{font-size:14px;line-height:1.5;margin:8px 0 0}.definition-card .synonym-buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
@@ -310,20 +309,25 @@ body.drawer-open{padding-right:var(--drawer-width)}
 body[data-theme="dark"]{--ink:#e8edf5;--muted:#a7b3c5;--line:#34445d;--paper:#111c2d;--ground:#08111f;background:linear-gradient(180deg,#0b1423 0,#07101d 100%);color:var(--ink)}
 body[data-theme="dark"] main,body[data-theme="dark"] .preview-panel,body[data-theme="dark"] .drawer-panels{background:transparent}
 body[data-theme="dark"] .workspace,body[data-theme="dark"] .editor-panel,body[data-theme="dark"] .preview-panel,body[data-theme="dark"] .paper,body[data-theme="dark"] #sourceText,body[data-theme="dark"] #previewText,body[data-theme="dark"] .utility-drawer,body[data-theme="dark"] .drawer-body,body[data-theme="dark"] .drawer-section,body[data-theme="dark"] .form-section,body[data-theme="dark"] .report-toolbar,body[data-theme="dark"] .epb-field{background:#111c2d;color:var(--ink)}
-body[data-theme="dark"] .alq-callout{background:#0b1627}body[data-theme="dark"] .alq-callout strong,body[data-theme="dark"] .alq-reference h4{color:#f4f7fb}
+body[data-theme="dark"] .alq-page{background:#08111f;border-color:#42516a}
 body[data-theme="dark"] input,body[data-theme="dark"] select,body[data-theme="dark"] textarea,body[data-theme="dark"] .secondary,body[data-theme="dark"] .theme-choice span,body[data-theme="dark"] .word-bank-button,body[data-theme="dark"] .synonym-button,body[data-theme="dark"] .rule-chip,body[data-theme="dark"] .saved-scroll,body[data-theme="dark"] .definition-card{background:#0b1627;color:var(--ink);border-color:#42516a}
 body[data-theme="dark"] .drawer-tab{background:#111c2d;color:#a7b3c5}body[data-theme="dark"] .drawer-tab.active{color:#fff}
 body[data-theme="dark"] .paper-shell{background:#08111f;border-color:#42516a}body[data-theme="dark"] .paper-shell::after{background:rgba(11,22,39,.94);color:#a7b3c5}
 body[data-theme="dark"] .intro h1,body[data-theme="dark"] h2,body[data-theme="dark"] h3,body[data-theme="dark"] .panel-heading h2,body[data-theme="dark"] .controls-title h2,body[data-theme="dark"] .section-title-row h2,body[data-theme="dark"] .epb-label-row,body[data-theme="dark"] .saved-item h3,body[data-theme="dark"] .definition-card h4{color:#f4f7fb}
 body[data-theme="dark"] th{background:#07101d}body[data-theme="dark"] td{border-color:#34445d}body[data-theme="dark"] tbody tr:hover{background:#16243a}
+body[data-theme="dark"] .drawer-section .acronym-table-wrap td:first-child{color:var(--orange)}
 body[data-theme="dark"] .fit-box.over #previewText{color:#ff786d}
 @media(max-width:560px){.drawer-tabs{grid-template-columns:repeat(5,minmax(52px,1fr));overflow-x:auto}.drawer-tab{font-size:10px}}
 /* The visible writing surface is the official field width, not a full-panel wrapper. */
 .paper-shell{box-sizing:border-box;width:min(100%,202.321mm);max-width:202.321mm;border:0;box-shadow:inset 0 0 0 1px #bcc8d8}
 .paper{width:202.321mm;height:192px;padding:0}
+#sourceText,.fit-box{background:#f4f7fb;box-shadow:inset 0 0 0 2px #8fa0b7}
+#previewText{background:transparent}
 .paper-shell::after{display:none}
 .write-shell:focus-within{box-shadow:inset 0 0 0 1px var(--blue),0 0 0 3px rgba(21,60,114,.1)}
 body[data-theme="dark"] .paper-shell{box-shadow:inset 0 0 0 1px #42516a}
+body[data-theme="dark"] #sourceText,body[data-theme="dark"] .fit-box{background:#17243a;box-shadow:inset 0 0 0 2px #63738c}
+body[data-theme="dark"] #previewText{background:transparent}
 body[data-theme="dark"] .write-shell:focus-within{box-shadow:inset 0 0 0 1px #7ca8e8,0 0 0 3px rgba(124,168,232,.18)}
 .utility-drawer{top:0}
 @media(max-width:560px){.utility-drawer{top:0}}

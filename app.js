@@ -3,8 +3,7 @@ const els={
   source:$('#sourceText'),preview:$('#previewText'),box:$('#fitBox'),paper:$('#paper'),
   shell:document.querySelector('.paper-shell'),count:$('#charCount'),
   estimate:$('#lineEstimate'),hint:$('#hint'),toast:$('#toast'),
-  measurer:$('#measureBox'),phrase:$('#phraseInput'),
-  replacement:$('#replacementInput'),ruleList:$('#ruleList'),search:$('#acronymSearch'),
+  measurer:$('#measureBox'),search:$('#acronymSearch'),
   results:$('#acronymResults'),resultsMeta:$('#resultsMeta'),dodSearch:$('#dodAcronymSearch'),
   dodResults:$('#dodAcronymResults'),dodResultsMeta:$('#dodResultsMeta')
 };
@@ -16,9 +15,6 @@ const PREVIEW_LINE_LIMIT=2;
 const NARROW_SPACE='\u2006';
 const WIDE_SPACE='\u2004';
 const FIELD_WIDTH_PX=FORM_WIDTH_MM*96/25.4;
-const RULES_KEY='tighttype-abbreviation-rules';
-const DEFAULT_RULES=[{from:'and',to:'&'}];
-const SUGGESTIONS={and:'&',percent:'%',dollars:'$',hours:'hrs',million:'M',billion:'B'};
 function makeId(){return globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'?globalThis.crypto.randomUUID():`tt-${Date.now()}-${Math.random().toString(36).slice(2)}`}
 
 const tabs=[...document.querySelectorAll('.tool-tab')];
@@ -164,7 +160,6 @@ let DOD_ACRONYMS=[
   ['WARNORD','WARNING ORDER'],['WMD','WEAPON OF MASS DESTRUCTION'],['WPS','WEAPONEERING SYSTEM'],['XO','EXECUTIVE OFFICER']
 ];
 
-let rules=loadRules();
 let currentOutput='';
 
 function syncPaperScale(){
@@ -177,15 +172,6 @@ function syncPaperScale(){
 }
 
 function cleanText(value){return value.replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim()}
-function escapeRegex(value){return value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
-function applyRules(value){
-  let output=cleanText(value);
-  [...rules].sort((a,b)=>b.from.length-a.from.length).forEach(rule=>{
-    const pattern=new RegExp(`(^|[^A-Za-z0-9])(${escapeRegex(rule.from)})(?=$|[^A-Za-z0-9])`,'gi');
-    output=output.replace(pattern,(_,before)=>before+rule.to);
-  });
-  return output;
-}
 
 const widthCanvas=document.createElement('canvas');
 const widthContext=widthCanvas.getContext('2d');
@@ -231,7 +217,7 @@ function optimizeSpaces(text){
 }
 
 function render(){
-  const optimized=optimizeSpaces(applyRules(els.source.value));
+  const optimized=optimizeSpaces(cleanText(els.source.value));
   currentOutput=optimized.text;
   const result=optimized.result;
   els.preview.textContent=currentOutput;
@@ -242,51 +228,10 @@ function render(){
   els.estimate.textContent=`${renderedLines} preview line${renderedLines===1?'':'s'}`;
   els.box.classList.toggle('over',renderedLines>PREVIEW_LINE_LIMIT);
   els.hint.textContent=renderedLines>PREVIEW_LINE_LIMIT
-    ?`Red output exceeds ${PREVIEW_LINE_LIMIT} lines. Shorten the text or add abbreviations.`
+    ?`Red output exceeds ${PREVIEW_LINE_LIMIT} lines. Shorten the text.`
     :result.fits
       ?`Fits ${FORM_WIDTH_MM} mm · ${optimized.narrow} U+2006 narrowed · ${optimized.wide} U+2004 widened.`
       :`One line still exceeds ${FORM_WIDTH_MM} mm after every safe space was changed to U+2006.`;
-}
-
-function loadRules(){
-  try{
-    const saved=JSON.parse(localStorage.getItem(RULES_KEY));
-    if(Array.isArray(saved))return saved.filter(rule=>rule.from&&rule.to);
-  }catch{}
-  return DEFAULT_RULES.map(rule=>({...rule}));
-}
-function saveRules(){localStorage.setItem(RULES_KEY,JSON.stringify(rules))}
-function renderRules(){
-  els.ruleList.replaceChildren();
-  if(!rules.length){
-    const empty=document.createElement('div');
-    empty.className='rule-empty';
-    empty.textContent='No automatic replacements yet.';
-    els.ruleList.append(empty);
-    return;
-  }
-  rules.forEach((rule,index)=>{
-    const chip=document.createElement('div');
-    chip.className='rule-chip';
-    const text=document.createElement('span');
-    text.textContent=`${rule.from} → `;
-    const replacement=document.createElement('b');
-    replacement.textContent=rule.to;
-    const remove=document.createElement('button');
-    remove.type='button';
-    remove.setAttribute('aria-label',`Remove ${rule.from} replacement`);
-    remove.textContent='×';
-    remove.addEventListener('click',()=>confirmAction(remove,'✓',()=>{rules.splice(index,1);saveRules();renderRules();render();notify('Replacement removed')}));
-    chip.append(text,replacement,remove);
-    els.ruleList.append(chip);
-  });
-}
-function addRule(from,to){
-  const phrase=from.trim(),replacement=to.trim();
-  if(!phrase||!replacement){notify('Enter both a phrase and replacement');return false}
-  const existing=rules.find(rule=>rule.from.toLowerCase()===phrase.toLowerCase());
-  if(existing)existing.to=replacement;else rules.push({from:phrase,to:replacement});
-  saveRules();renderRules();render();return true;
 }
 
 function renderAcronymTable(entries,query,results,meta,emptyMessage,metaText,displayLimit=Infinity){
@@ -297,15 +242,11 @@ function renderAcronymTable(entries,query,results,meta,emptyMessage,metaText,dis
     const row=document.createElement('tr');
     const acronym=document.createElement('td');acronym.textContent=short;
     const meaning=document.createElement('td');meaning.textContent=definition;
-    const action=document.createElement('td');
-    const use=document.createElement('button');use.type='button';use.className='use-acronym';use.textContent='Use';
-    use.setAttribute('aria-label',`Replace ${definition} with ${short}`);
-    use.addEventListener('click',()=>{addRule(definition,short);notify(`${short} rule added`)});
-    action.append(use);row.append(acronym,meaning,action);results.append(row);
+    row.append(acronym,meaning);results.append(row);
   });
   if(!matches.length){
     const row=document.createElement('tr'),cell=document.createElement('td');
-    cell.colSpan=3;cell.className='no-results';cell.textContent=emptyMessage;
+    cell.colSpan=2;cell.className='no-results';cell.textContent=emptyMessage;
     row.append(cell);results.append(row);
   }
   meta.textContent=metaText(matches.length,entries.length);
@@ -314,7 +255,7 @@ function renderAcronyms(query=''){renderAcronymTable(ACRONYMS,query,els.results,
 function renderDodAcronyms(query=''){renderAcronymTable(DOD_ACRONYMS,query,els.dodResults,els.dodResultsMeta,'No DoD acronyms match that search.',(shown,total)=>`${shown} matches in ${total} DoD Dictionary entries · showing ${Math.min(shown,250)}`,250)}
 async function loadDodAcronyms(){
   try{
-    const response=await fetch('./dod-acronyms.json?v=1.0.4');if(!response.ok)throw new Error('unavailable');
+    const response=await fetch('./dod-acronyms.json?v=1.0.5');if(!response.ok)throw new Error('unavailable');
     const entries=await response.json();if(!Array.isArray(entries)||!entries.length)throw new Error('invalid');
     DOD_ACRONYMS=entries.filter(entry=>Array.isArray(entry)&&typeof entry[0]==='string'&&typeof entry[1]==='string');renderDodAcronyms(els.dodSearch.value);
   }catch{els.dodResultsMeta.textContent=`Offline reference subset · ${DOD_ACRONYMS.length} entries`}
@@ -534,22 +475,18 @@ function applyBulletHistory(index){if(index<0||index>=bulletHistory.length)retur
 els.source.addEventListener('input',()=>{render();if(historyApplying)return;bulletHistory=bulletHistory.slice(0,bulletHistoryIndex+1);bulletHistory.push(els.source.value);if(bulletHistory.length>250)bulletHistory.shift();else bulletHistoryIndex++;updateHistoryButtons()});
 $('#undoButton').addEventListener('click',()=>applyBulletHistory(bulletHistoryIndex-1));
 $('#redoButton').addEventListener('click',()=>applyBulletHistory(bulletHistoryIndex+1));
-els.phrase.addEventListener('input',()=>{const suggestion=SUGGESTIONS[els.phrase.value.trim().toLowerCase()];if(suggestion&&!els.replacement.value)els.replacement.value=suggestion});
-$('#abbreviationForm').addEventListener('submit',event=>{event.preventDefault();if(addRule(els.phrase.value,els.replacement.value)){els.phrase.value='';els.replacement.value='';els.phrase.focus();notify('Replacement added')}});
-$('#resetRules').addEventListener('click',()=>confirmAction($('#resetRules'),'Confirm reset',()=>{rules=DEFAULT_RULES.map(rule=>({...rule}));saveRules();renderRules();render();notify('Default replacements restored')}));
 $('#copyButton').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(currentOutput);notify('Formatted text copied')}catch{notify('Select and copy the text manually')}});
 els.search.addEventListener('input',()=>renderAcronyms(els.search.value));
 els.dodSearch.addEventListener('input',()=>renderDodAcronyms(els.dodSearch.value));
 const boxObserver=new ResizeObserver(syncPaperScale);
 document.querySelectorAll('.paper-shell').forEach(shell=>boxObserver.observe(shell));
 syncPaperScale();
-renderRules();
 renderAcronyms();
 renderDodAcronyms();
 void loadDodAcronyms();
 render();
 
-// Versioned snapshots retain the source, generated text, and abbreviation rules.
+// Versioned snapshots retain source and generated text. The empty rules field preserves cloud-schema compatibility.
 const BULLETS_KEY='tighttype-saved-bullets-v1';
 const LEGACY_CLAIM_KEY='bullet-shitter-legacy-library-claimed-v1';
 function bulletStorageKey(){return authSession?.user?.id?`${BULLETS_KEY}:${authSession.user.id}`:BULLETS_KEY}
@@ -558,7 +495,7 @@ let currentBulletId=null;
 try{
   const stored=JSON.parse(localStorage.getItem(bulletStorageKey())||'[]');
   if(!Array.isArray(stored))throw new Error('Invalid saved data');
-  savedBullets=stored.filter(row=>row&&typeof row==='object').map(row=>({...row,id:row.id||makeId(),title:String(row.title||'Untitled bullet'),source:String(row.source||''),output:String(row.output||row.source||''),rules:Array.isArray(row.rules)?row.rules.filter(rule=>rule&&typeof rule.from==='string'&&typeof rule.to==='string'):DEFAULT_RULES.map(rule=>({...rule}))}));
+  savedBullets=stored.filter(row=>row&&typeof row==='object').map(row=>({...row,id:row.id||makeId(),title:String(row.title||'Untitled bullet'),source:String(row.source||''),output:String(row.output||row.source||''),rules:[]}));
 }catch{
   $('#savedStatus').textContent='Saved bullets could not be loaded. Browser storage may be unavailable.';
 }
@@ -578,7 +515,7 @@ function showSavedBullets(){
     const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Edit';
     open.addEventListener('click',()=>{
       els.source.value=bullet.source;$('#bulletTitle').value=bullet.title;
-      rules=bullet.rules.map(rule=>({...rule}));renderRules();render();
+      render();
       currentBulletId=bullet.id;$('#saveBulletButton').textContent='Update';
       resetBulletHistory();selectTab($('#tab-1206'));$('#sourceText').focus();notify('Saved bullet ready to edit');
     });
@@ -593,7 +530,7 @@ async function saveBullet(asCopy=false){
   if(!els.source.value.trim()){notify('Write a bullet before saving.');return}
   render();
   const existing=!asCopy&&currentBulletId?savedBullets.find(row=>row.id===currentBulletId):null;
-  const bullet={schemaVersion:1,id:existing?.id||makeId(),title,source:els.source.value,output:currentOutput,rules:rules.map(rule=>({...rule})),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const bullet={schemaVersion:1,id:existing?.id||makeId(),title,source:els.source.value,output:currentOutput,rules:[],createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const next=existing?savedBullets.map(row=>row.id===existing.id?bullet:row):[bullet,...savedBullets];
   if(storeBullets(next)){
     currentBulletId=bullet.id;$('#saveBulletButton').textContent='Update';showSavedBullets();
@@ -723,7 +660,7 @@ async function saveAccountPreferences(){
 function guestWorkSnapshot(){
   const bullets=parseLocalLibrary(BULLETS_KEY),reports=parseLocalLibrary(REPORTS_KEY),source=els.source.value.trim(),data=reportData();
   const defaultSource='- Led 12-person team through rapid system upgrade—cut processing time 34% and restored mission capability 2 days early';
-  return {bullets,reports,draft:source&&source!==defaultSource?{source,rules:rules.map(rule=>({...rule}))}:null,reportDraft:Object.values(data).some(value=>String(value).trim())?{type:reportType,data}:null};
+  return {bullets,reports,draft:source&&source!==defaultSource?{source,rules:[]}:null,reportDraft:Object.values(data).some(value=>String(value).trim())?{type:reportType,data}:null};
 }
 function guestWorkCount(snapshot){return (snapshot?.bullets?.length||0)+(snapshot?.reports?.length||0)+(snapshot?.draft?1:0)+(snapshot?.reportDraft?1:0)}
 function rememberGuestWork(){pendingGuestImport=guestWorkSnapshot();if(!guestWorkCount(pendingGuestImport)){forgetPendingGuestWork();return null}try{localStorage.setItem(PENDING_IMPORT_KEY,JSON.stringify(pendingGuestImport))}catch{}return pendingGuestImport}
@@ -735,8 +672,8 @@ function promptGuestImportIfNeeded(){
 }
 async function importGuestWork(){
   const snapshot=readPendingGuestWork(),now=new Date().toISOString();if(!snapshot||!sessionUser())return;
-  const bullets=[...(snapshot.bullets||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported bullet',source:row.source||'',output:row.output||row.source||'',rules:Array.isArray(row.rules)?row.rules:DEFAULT_RULES,createdAt:row.createdAt||now,updatedAt:now}));
-  if(snapshot.draft)bullets.push({schemaVersion:1,id:makeId(),title:`Imported draft — ${new Date().toLocaleString()}`,source:snapshot.draft.source,output:optimizeSpaces(applyRules(snapshot.draft.source)).text,rules:snapshot.draft.rules||DEFAULT_RULES,createdAt:now,updatedAt:now});
+  const bullets=[...(snapshot.bullets||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported bullet',source:row.source||'',output:row.output||row.source||'',rules:[],createdAt:row.createdAt||now,updatedAt:now}));
+  if(snapshot.draft)bullets.push({schemaVersion:1,id:makeId(),title:`Imported draft — ${new Date().toLocaleString()}`,source:snapshot.draft.source,output:optimizeSpaces(cleanText(snapshot.draft.source)).text,rules:[],createdAt:now,updatedAt:now});
   const reports=[...(snapshot.reports||[])].map(row=>({schemaVersion:1,id:row.id||makeId(),title:row.title||'Imported report',type:row.type==='OPB'?'OPB':'EPB',data:row.data||{},createdAt:row.createdAt||now,updatedAt:now}));
   if(snapshot.reportDraft)reports.push({schemaVersion:1,id:makeId(),title:`Imported ${snapshot.reportDraft.type} draft — ${new Date().toLocaleString()}`,type:snapshot.reportDraft.type,data:snapshot.reportDraft.data,createdAt:now,updatedAt:now});
   if(bullets.length)await dataRequest('bullets',{method:'POST',query:'on_conflict=id',body:bullets.map(cloudBulletRow),prefer:'resolution=merge-duplicates'});
