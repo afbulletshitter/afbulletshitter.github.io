@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081a33" />
   <title>Bullet Shitter v1.0</title>
   <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
-  <link rel="stylesheet" href="./styles.css?v=1.0.7" />
+  <link rel="stylesheet" href="./styles.css?v=1.0.8" />
 </head>
 <body>
   <header class="topbar">
@@ -117,7 +117,7 @@
   <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
     <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody" title="Click to open or close. Drag sideways to resize, or use the left and right arrow keys."><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
     <div class="drawer-body" id="drawerBody">
-      <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
+      <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2><p class="resize-note">(this window is resizable)</p></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
       <nav class="drawer-tabs" role="tablist" aria-label="Reference tools">
         <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawer-saved">Saved bullets</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-reports">Saved EPB / OPB</button>
@@ -171,7 +171,7 @@
         <section id="drawer-thesaurus" class="drawer-panel" role="tabpanel" hidden>
           <div class="drawer-section"><h3>Thesaurus</h3><p class="drawer-copy">Search for synonyms and definitions without leaving your draft. Select any result to explore that word.</p>
             <form id="thesaurusForm" class="lookup-form"><label for="thesaurusSearch">Search a word or phrase</label><div><input id="thesaurusSearch" type="search" autocomplete="off" placeholder="accomplished" required /><button class="primary" type="submit">Search</button></div></form>
-            <p class="external-search-note" id="thesaurusStatus">Definitions and synonyms are provided by Datamuse, with an offline Air Force writing fallback.</p>
+            <p class="external-search-note" id="thesaurusStatus">Search synonyms, related words, and definitions from Datamuse and Free Dictionary, with an offline writing word bank.</p>
             <div id="thesaurusSuggestion" class="spelling-suggestion" hidden></div>
             <div id="thesaurusResults" class="thesaurus-results" aria-live="polite"></div>
           </div>
@@ -236,6 +236,6 @@
   <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
-  <script src="./app.js?v=1.0.7"></script>
+  <script src="./app.js?v=1.0.8"></script>
 </body>
 </html>

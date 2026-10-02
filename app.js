@@ -415,7 +415,7 @@ function wordBankFallback(term){
   keys.forEach(candidate=>{const next=distance(key,candidate);if(next<score){score=next;best=candidate}});
   return best&&score<=Math.max(2,Math.floor(key.length/3))?{suggestion:best}:null;
 }
-function renderThesaurusEntry(word,definition,synonyms=[]){
+function renderThesaurusEntry(word,definition,synonyms=[],related=[]){
   const results=$('#thesaurusResults');results.replaceChildren();
   const card=document.createElement('article');card.className='definition-card';
   const title=document.createElement('h4');title.textContent=word;
@@ -426,7 +426,15 @@ function renderThesaurusEntry(word,definition,synonyms=[]){
   const label=document.createElement('div');label.className='part';label.textContent='Synonyms';
   const buttons=document.createElement('div');buttons.className='synonym-buttons';
   synonyms.forEach(item=>{const button=document.createElement('button');button.type='button';button.className='synonym-button';button.textContent=typeof item==='string'?item:item.word;button.addEventListener('click',()=>lookupThesaurus(button.textContent));buttons.append(button)});
-  card.append(title,copy,label,buttons);results.append(card);
+  if(!synonyms.length){const empty=document.createElement('p');empty.textContent='No exact synonyms returned. Try the related words below.';buttons.append(empty)}
+  card.append(title,copy,label,buttons);
+  if(related.length){
+    const heading=document.createElement('div');heading.className='part';heading.textContent='Related words — check the meaning before substituting';
+    const options=document.createElement('div');options.className='synonym-buttons';
+    related.forEach(word=>{const button=document.createElement('button');button.type='button';button.className='synonym-button';button.textContent=word;button.addEventListener('click',()=>lookupThesaurus(word));options.append(button)});
+    card.append(heading,options);
+  }
+  results.append(card);
 }
 function showSpellingSuggestion(word){
   const holder=$('#thesaurusSuggestion');holder.replaceChildren();
@@ -434,24 +442,42 @@ function showSpellingSuggestion(word){
   const text=document.createTextNode('Did you mean '),button=document.createElement('button');button.type='button';button.className='text-button';button.textContent=word;button.addEventListener('click',()=>lookupThesaurus(word));holder.append(text,button,document.createTextNode('?'));holder.hidden=false;
 }
 let lookupRequestId=0;
+const thesaurusCache=new Map();
+const VERB_BASES={accomplished:'accomplish',achieved:'achieve',accelerated:'accelerate',advanced:'advance',built:'build',championed:'champion',coordinated:'coordinate',created:'create',delivered:'deliver',developed:'develop',directed:'direct',enabled:'enable',enhanced:'enhance',established:'establish',executed:'execute',expanded:'expand',generated:'generate',improved:'improve',increased:'increase',integrated:'integrate',led:'lead',managed:'manage',modernized:'modernize',optimized:'optimize',orchestrated:'orchestrate',pioneered:'pioneer',prevented:'prevent',produced:'produce',reduced:'reduce',resolved:'resolve',restored:'restore',secured:'secure',spearheaded:'spearhead',streamlined:'streamline',strengthened:'strengthen',transformed:'transform',upgraded:'upgrade'};
+async function fetchWordData(url){
+  try{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{const response=await fetch(url,{signal:controller.signal});if(!response.ok)return[];const result=await response.json();return Array.isArray(result)?result:[]}finally{clearTimeout(timer)}}catch{return[]}
+}
+function showThesaurusData(term,data){
+  renderThesaurusEntry(term,data.definitions,data.synonyms,data.related);
+  showSpellingSuggestion(data.suggestion||'');
+  $('#thesaurusStatus').textContent=`${data.synonyms.length} synonyms · ${data.related.length} related words · ${data.definitions.length} definitions. Select a word to explore its meanings.`;
+}
 async function lookupThesaurus(rawTerm){
-  const term=rawTerm.trim();if(!term)return;$('#thesaurusSearch').value=term;$('#thesaurusStatus').textContent='Searching…';showSpellingSuggestion('');
+  const term=rawTerm.trim().toLowerCase();if(!term)return;$('#thesaurusSearch').value=term;$('#thesaurusStatus').textContent='Searching…';showSpellingSuggestion('');$('#thesaurusResults').replaceChildren();
   const requestId=++lookupRequestId;
+  if(thesaurusCache.has(term)){showThesaurusData(term,thesaurusCache.get(term));return}
+  const fallback=wordBankFallback(term);
+  if(fallback?.word){renderThesaurusEntry(term,fallback.definition,fallback.synonyms);$('#thesaurusStatus').textContent='Showing writing alternatives while the full search loads…'}
   try{
-    const encoded=encodeURIComponent(term),urls=[`https://api.datamuse.com/words?sp=${encoded}&md=dp&qe=sp&max=1`,`https://api.datamuse.com/words?rel_syn=${encoded}&md=dp&max=1000`,`https://api.datamuse.com/sug?s=${encoded}&max=3`,`https://api.dictionaryapi.dev/api/v2/entries/en/${encoded}`];
-    const [head,synonyms,suggestions,dictionary]=await Promise.all(urls.map(async url=>{try{const response=await fetch(url,{signal:AbortSignal.timeout(12000)});return response.ok?await response.json():[]}catch{return[]}}));
+    const encoded=encodeURIComponent(term),base=VERB_BASES[term]||term,baseEncoded=encodeURIComponent(base);
+    const urls=[`https://api.datamuse.com/words?sp=${encoded}&md=dp&qe=sp&max=1`,`https://api.datamuse.com/words?rel_syn=${encoded}&md=dp&max=1000`,`https://api.datamuse.com/sug?s=${encoded}&max=5`,`https://api.dictionaryapi.dev/api/v2/entries/en/${encoded}`,`https://api.datamuse.com/words?ml=${baseEncoded}&md=dp&max=80`];
+    if(base!==term)urls.push(`https://api.datamuse.com/words?rel_syn=${baseEncoded}&max=1000`,`https://api.dictionaryapi.dev/api/v2/entries/en/${baseEncoded}`);
+    const [head,synonyms,suggestions,dictionary,related,baseSynonyms=[],baseDictionary=[]]=await Promise.all(urls.map(fetchWordData));
     if(requestId!==lookupRequestId)return;
     const exact=head.find(item=>item.word?.toLowerCase()===term.toLowerCase());
-    const definitions=[...(exact?.defs||[])],allSynonyms=[...synonyms.map(item=>item.word)];
-    if(Array.isArray(dictionary))dictionary.forEach(entry=>(entry.meanings||[]).forEach(meaning=>{allSynonyms.push(...(meaning.synonyms||[]));(meaning.definitions||[]).forEach(item=>{definitions.push(`${meaning.partOfSpeech} — ${item.definition}`);allSynonyms.push(...(item.synonyms||[]))})}));
+    const definitions=[],allSynonyms=[...synonyms,...baseSynonyms].map(item=>item.word);
+    [...dictionary,...baseDictionary].forEach(entry=>(entry.meanings||[]).forEach(meaning=>{allSynonyms.push(...(meaning.synonyms||[]));(meaning.definitions||[]).forEach(item=>{definitions.push(`${meaning.partOfSpeech} — ${item.definition}`);allSynonyms.push(...(item.synonyms||[]))})}));
+    if(!definitions.length)definitions.push(...(exact?.defs||[]));
+    if(!definitions.length&&fallback?.word)definitions.push(fallback.definition);
+    if(fallback?.word)allSynonyms.push(...fallback.synonyms);
     if(!exact&&!definitions.length&&!allSynonyms.length)throw new Error('no match');
-    const uniqueSynonyms=[...new Set(allSynonyms.filter(word=>word.toLowerCase()!==term.toLowerCase()))];
-    renderThesaurusEntry(term,definitions,uniqueSynonyms);
-    const suggestion=suggestions.find(item=>item.word?.toLowerCase()!==term.toLowerCase())?.word;showSpellingSuggestion(exact?.word?.toLowerCase()===term.toLowerCase()?'':suggestion);
-    $('#thesaurusStatus').textContent=`${uniqueSynonyms.length} synonyms · ${definitions.length} available definitions. Select a synonym to explore it.`;
+    const uniqueSynonyms=[...new Set(allSynonyms.filter(word=>typeof word==='string'&&word.toLowerCase()!==term&&word.toLowerCase()!==base))];
+    const relatedWords=[...new Set(related.map(item=>item.word).filter(word=>typeof word==='string'&&word!==term&&word!==base&&!uniqueSynonyms.includes(word)))];
+    const suggestion=!exact&&!dictionary.length?suggestions.find(item=>item.word?.toLowerCase()!==term)?.word:'';
+    const data={definitions:[...new Set(definitions)],synonyms:uniqueSynonyms,related:relatedWords,suggestion};
+    thesaurusCache.set(term,data);showThesaurusData(term,data);
   }catch{
     if(requestId!==lookupRequestId)return;
-    const fallback=wordBankFallback(term);
     if(fallback?.word){renderThesaurusEntry(fallback.word,fallback.definition,fallback.synonyms);$('#thesaurusStatus').textContent='Showing the offline Air Force writing word bank.'}
     else{$('#thesaurusResults').replaceChildren();$('#thesaurusStatus').textContent='No definition or synonyms were found.';showSpellingSuggestion(fallback?.suggestion||'')}
   }
