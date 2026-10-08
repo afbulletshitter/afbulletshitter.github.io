@@ -3,16 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#081a33" />
-  <title>Bullet Shitter v1.0</title>
+  <meta name="theme-color" content="#101215" />
+  <title>StratForge</title>
   <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
-  <link rel="stylesheet" href="./styles.css?v=1.0.9" />
+  <link rel="stylesheet" href="./styles.css?v=1.1.0" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand-block">
-      <a class="brand" href="#">BULLET SHITTER <span>v1.0</span></a>
-      <div class="brand-message"><strong>Shit in, strat out</strong><small id="workspaceTagline">Making airman sound important, 5 minutes before the deadline.</small></div>
+      <a class="brand" href="#">Strat<span>Forge</span></a>
     </div>
     <button class="profile-trigger" id="profileTrigger" type="button" aria-haspopup="dialog" aria-controls="accountDialog">
       <span class="profile-avatar" id="profileAvatar">?</span><span class="profile-copy"><b id="profileName">Sign in</b><small id="profileEmail">Save work to your account</small></span>
@@ -44,7 +43,6 @@
           <p class="hint" id="hint">Each line is optimized with U+2004 or U+2006 spaces while preserving 12-point Times New Roman.</p>
           <section class="abbreviations-section" aria-labelledby="abbreviationTitle">
             <div class="controls-title"><span class="step">03</span><h2 id="abbreviationTitle">Auto abbreviations</h2></div>
-            <p class="section-help">Custom replacements change the preview only. Your original writing stays unchanged.</p>
             <form id="abbreviationForm" class="abbreviation-form"><label>Word or phrase<input id="phraseInput" placeholder="and" autocomplete="off" /></label><label>Replace with<input id="replacementInput" placeholder="&amp;" autocomplete="off" /></label><button class="primary" type="submit">Add rule</button></form>
             <div class="rules-head"><span>Active rules</span><button id="resetRules" class="text-button" type="button">Reset rules</button></div><div id="ruleList" class="rule-list"></div>
           </section>
@@ -117,7 +115,7 @@
   <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
     <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="true" aria-controls="drawerBody" aria-label="Close tools and resize" title="Click to open or close tools. Drag sideways to resize, or use the left and right arrow keys."><span class="drawer-chevron">‹</span><span id="drawerToggleLabel">CLOSE TOOLS &amp; RESIZE</span></button>
     <div class="drawer-body" id="drawerBody">
-      <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2><p class="resize-note">(this window is resizable)</p></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
+      <div class="drawer-head"><div><h2>Tools</h2></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
       <nav class="drawer-tabs" role="tablist" aria-label="Reference tools">
         <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawer-saved">Saved bullets</button>
         <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawer-reports">Saved EPB / OPB</button>
@@ -190,9 +188,9 @@
           </div>
         </section>
         <section id="drawer-settings" class="drawer-panel" role="tabpanel" hidden>
-          <div class="drawer-section"><h3>Settings</h3><p class="drawer-copy">Choose the base theme and add an independent warm page tint for late-night writing.</p>
-            <fieldset class="theme-choice"><legend>Appearance</legend><label><input type="radio" name="siteTheme" value="light" checked /><span>Light</span></label><label><input type="radio" name="siteTheme" value="dark" /><span>Dark</span></label></fieldset>
-            <label class="night-setting" for="nightHue"><span>Night light warmth</span><output id="nightHueOutput">0%</output><input id="nightHue" type="range" min="0" max="100" step="1" value="0" /></label>
+          <div class="drawer-section"><h3>Appearance</h3>
+            <div class="color-settings"><label for="backgroundColor">Background color<input id="backgroundColor" type="color" value="#101215" /></label><label for="accentColor">Accent color<input id="accentColor" type="color" value="#58a6ff" /></label></div>
+            <label class="night-setting" for="nightHue"><span>Dimmer</span><output id="nightHueOutput">0%</output><input id="nightHue" type="range" min="0" max="100" step="1" value="0" /></label>
             <button class="secondary reset-settings" id="resetSettings" type="button">Reset appearance</button>
           </div>
           <div class="drawer-section account-settings" id="accountSettingsSection">
@@ -236,6 +234,6 @@
   <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
-  <script src="./app.js?v=1.0.9"></script>
+  <script src="./app.js?v=1.1.0"></script>
 </body>
 </html>

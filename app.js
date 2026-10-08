@@ -34,7 +34,6 @@ function selectTab(tab){
     item.tabIndex=selected?0:-1;
     document.getElementById(item.getAttribute('aria-controls')).hidden=!selected;
   });
-  $('#workspaceTagline').textContent=tab.id==='tab-epb'?"Because your supervisor sure as shit ain't writing it.":'Making airman sound important, 5 minutes before the deadline.';
   if(tab.id==='tab-1206')requestAnimationFrame(syncPaperScale);
 }
 tabs.forEach((tab,index)=>{
@@ -347,22 +346,37 @@ $('#alqZoomIn').addEventListener('click',()=>setAlqZoom(alqZoom+25));$('#alqZoom
 setDrawer(true);
 
 const APPEARANCE_KEY='bullet-shitter-appearance-v1';
-let appearance={theme:'light',nightHue:0};
-try{const stored=JSON.parse(localStorage.getItem(APPEARANCE_KEY)||'{}');if(stored.theme==='dark'||stored.theme==='light')appearance.theme=stored.theme;const level=Number(stored.nightHue);if(Number.isFinite(level))appearance.nightHue=Math.min(100,Math.max(0,level))}catch{}
+const DEFAULT_APPEARANCE={background:'#101215',accent:'#58a6ff',nightHue:0};
+let appearance={...DEFAULT_APPEARANCE};
+function validColor(value){return typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)}
+function restoreAppearance(stored){
+  if(!stored||typeof stored!=='object')return;
+  if(validColor(stored.background))appearance.background=stored.background;
+  if(validColor(stored.accent))appearance.accent=stored.accent;
+  const level=Number(stored.nightHue);if(Number.isFinite(level))appearance.nightHue=Math.min(100,Math.max(0,level));
+}
+try{restoreAppearance(JSON.parse(localStorage.getItem(APPEARANCE_KEY)||'{}'))}catch{}
+function colorLuminance(hex){const channels=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4));return .2126*channels[0]+.7152*channels[1]+.0722*channels[2]}
+function readableInk(hex){const luminance=colorLuminance(hex);return (luminance+.05)/.05>=1.05/(luminance+.05)?'#111111':'#f5f7fa'}
 function applyAppearance(sync=true){
-  document.body.dataset.theme=appearance.theme;
-  const warmth=appearance.nightHue/100;
+  const dark=readableInk(appearance.background)==='#f5f7fa';
+  appearance.theme=dark?'dark':'light';document.body.dataset.theme=appearance.theme;
+  const style=document.documentElement.style;
+  style.setProperty('--sf-background',appearance.background);style.setProperty('--sf-accent',appearance.accent);
+  style.setProperty('--sf-ink',readableInk(appearance.background));style.setProperty('--sf-accent-ink',readableInk(appearance.accent));
+  style.setProperty('--sf-surface-mix',dark?'white':'black');
   document.documentElement.style.removeProperty('filter');
-  $('#nightLightOverlay').style.opacity=String(warmth*(appearance.theme==='dark'?.34:.48));
-  $('#nightLightOverlay').style.mixBlendMode=appearance.theme==='dark'?'screen':'multiply';
-  const selected=document.querySelector(`input[name="siteTheme"][value="${appearance.theme}"]`);if(selected)selected.checked=true;
+  $('#nightLightOverlay').style.opacity=String(appearance.nightHue/100*.8);
+  $('#nightLightOverlay').style.mixBlendMode='normal';
+  $('#backgroundColor').value=appearance.background;$('#accentColor').value=appearance.accent;
   $('#nightHue').value=String(appearance.nightHue);$('#nightHueOutput').textContent=`${appearance.nightHue}%`;
   try{localStorage.setItem(APPEARANCE_KEY,JSON.stringify(appearance))}catch{}
   if(sync)schedulePreferenceSync();
 }
-document.querySelectorAll('input[name="siteTheme"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked){appearance.theme=input.value;applyAppearance()}}));
+$('#backgroundColor').addEventListener('input',event=>{appearance.background=event.target.value;applyAppearance()});
+$('#accentColor').addEventListener('input',event=>{appearance.accent=event.target.value;applyAppearance()});
 $('#nightHue').addEventListener('input',event=>{appearance.nightHue=Number(event.target.value);applyAppearance()});
-$('#resetSettings').addEventListener('click',()=>confirmAction($('#resetSettings'),'Confirm reset',()=>{appearance={theme:'light',nightHue:0};applyAppearance();notify('Appearance reset')}));
+$('#resetSettings').addEventListener('click',()=>confirmAction($('#resetSettings'),'Confirm reset',()=>{appearance={...DEFAULT_APPEARANCE};applyAppearance();notify('Appearance reset')}));
 applyAppearance(false);
 
 const WORD_BANK={
@@ -774,7 +788,7 @@ let preferenceSyncTimer=null;
 function schedulePreferenceSync(){if(!sessionUser())return;clearTimeout(preferenceSyncTimer);preferenceSyncTimer=setTimeout(()=>void saveAccountPreferences().catch(()=>{}),500)}
 async function saveAccountPreferences(){
   const user=sessionUser();if(!user)return false;
-  const body={user_id:user.id,display_name:displayNameFor(user),preferences:{theme:appearance.theme,nightHue:appearance.nightHue,workspaceDraft},updated_at:new Date().toISOString()};
+  const body={user_id:user.id,display_name:displayNameFor(user),preferences:{theme:appearance.theme,background:appearance.background,accent:appearance.accent,nightHue:appearance.nightHue,workspaceDraft},updated_at:new Date().toISOString()};
   const task=preferenceSyncChain.catch(()=>{}).then(async()=>{if(sessionUser()?.id!==user.id)return false;await dataRequest('profiles',{method:'POST',query:'on_conflict=user_id',body,prefer:'resolution=merge-duplicates'});return true});preferenceSyncChain=task;return task;
 }
 function guestWorkSnapshot(){
@@ -863,7 +877,7 @@ async function initializeAccountStorage({offerGuestImport=false}={}){
     if(profile?.preferences&&typeof profile.preferences==='object'){
       const remoteDraft=profile.preferences.workspaceDraft;
       if(remoteDraft&&Number(remoteDraft.updatedAt)>Number(workspaceDraft?.updatedAt||0)){workspaceDraft=remoteDraft;try{localStorage.setItem(workspaceDraftKey(),JSON.stringify(remoteDraft))}catch{}applyWorkspaceDraft(remoteDraft)}
-      const theme=profile.preferences.theme,nightHue=Number(profile.preferences.nightHue);if(theme==='light'||theme==='dark')appearance.theme=theme;if(Number.isFinite(nightHue))appearance.nightHue=Math.min(100,Math.max(0,nightHue));applyAppearance(false);
+      restoreAppearance(profile.preferences);applyAppearance(false);
     }else await saveAccountPreferences();
     await retryPendingSync();
     const [bulletRows,reportRows]=await Promise.all([dataRequest('bullets',{query:'select=*&order=updated_at.desc'}),dataRequest('reports',{query:'select=*&order=updated_at.desc'})]);
