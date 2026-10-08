@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081a33" />
   <title>Bullet Shitter v1.0</title>
   <meta name="description" content="Fit 1206 bullets and prepare EPB or OPB content for official-form PDF export." />
-  <link rel="stylesheet" href="./styles.css?v=1.0.8" />
+  <link rel="stylesheet" href="./styles.css?v=1.0.9" />
 </head>
 <body>
   <header class="topbar">
@@ -65,7 +65,7 @@
           <div class="form-section">
             <div class="section-title-row"><span class="step">01</span><div><h2>Identification</h2><p>Labels match the selected official performance brief.</p></div></div>
             <div class="admin-grid">
-              <label>NAME (Last, First, Middle Initial, Suffix)<input data-report="name" maxlength="80" placeholder="DOE, JOHN A, JR." /></label><label>DoDID#<input data-report="dodid" inputmode="numeric" maxlength="10" placeholder="10-digit DoD ID" /></label>
+              <label>NAME (Last, First, Middle Initial, Suffix)<input data-report="name" maxlength="80" placeholder="DOE, JOHN A, JR." /></label><label>DoDID#<input data-report="dodid" disabled readonly value="" aria-describedby="dodidPrivacyNote" /><span class="privacy-note" id="dodidPrivacyNote">Left blank for privacy, including PDF exports.</span></label>
               <label>GRADE<select data-report="grade" id="gradeSelect"></select></label><label>DUTY TITLE<input data-report="dutyTitle" maxlength="100" placeholder="Official duty title" /></label>
               <label>PERIOD — FROM (YYYYMMDD)<input data-report="fromDate" type="date" /></label><label>PERIOD — THRU (YYYYMMDD)<input data-report="thruDate" type="date" /></label>
               <label>REASON<select data-report="reason" id="reasonSelect"></select></label><label>DAFSC<input data-report="dafsc" maxlength="12" /></label>
@@ -76,7 +76,7 @@
             </div>
           </div>
           <div class="form-section">
-            <div class="section-title-row"><span class="step">02</span><div><h2>Major Performance Areas</h2><p>Each narrative is limited to 350 characters.</p></div></div>
+            <div class="section-title-row"><span class="step">02</span><div><h2>Major Performance Areas</h2><p>Official limit: 350 characters per narrative. Draft beyond the limit without losing text; counters flag the excess.</p></div></div>
             <div class="epb-grid">
               <label class="epb-field"><span class="epb-label-row"><span>EXECUTING THE MISSION</span><output data-count-for="executingMission">0 / 350</output></span><textarea data-report="executingMission" class="epb-textarea" maxlength="350" spellcheck="true"></textarea></label>
               <label class="epb-field"><span class="epb-label-row"><span>LEADING PEOPLE</span><output data-count-for="leadingPeople">0 / 350</output></span><textarea data-report="leadingPeople" class="epb-textarea" maxlength="350" spellcheck="true"></textarea></label>
@@ -115,7 +115,7 @@
     </div>
   </main>
   <aside class="utility-drawer collapsed" id="utilityDrawer" aria-label="Saved work and writing references">
-    <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerBody" title="Click to open or close. Drag sideways to resize, or use the left and right arrow keys."><span class="drawer-chevron">‹</span><span>TOOLS</span></button>
+    <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="true" aria-controls="drawerBody" aria-label="Close tools and resize" title="Click to open or close tools. Drag sideways to resize, or use the left and right arrow keys."><span class="drawer-chevron">‹</span><span id="drawerToggleLabel">CLOSE TOOLS &amp; RESIZE</span></button>
     <div class="drawer-body" id="drawerBody">
       <div class="drawer-head"><div><p class="eyebrow-flat">WORKSPACE</p><h2>Writing tools</h2><p class="resize-note">(this window is resizable)</p></div><button id="drawerClose" class="icon-close" type="button" aria-label="Minimize writing tools">×</button></div>
       <nav class="drawer-tabs" role="tablist" aria-label="Reference tools">
@@ -236,6 +236,6 @@
   <div class="night-light-overlay" id="nightLightOverlay" aria-hidden="true"></div><div id="measureBox" aria-hidden="true"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth-config.js"></script>
   <script src="./vendor/pdf-lib.min.js"></script>
-  <script src="./app.js?v=1.0.8"></script>
+  <script src="./app.js?v=1.0.9"></script>
 </body>
 </html>

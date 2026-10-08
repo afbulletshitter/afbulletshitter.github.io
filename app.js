@@ -294,7 +294,7 @@ async function loadDodAcronyms(){
 
 // A collapsible reference drawer stays available in both work areas.
 const drawer=$('#utilityDrawer');
-function setDrawer(open){drawer.classList.toggle('collapsed',!open);document.body.classList.toggle('drawer-open',open);$('#drawerToggle').setAttribute('aria-expanded',String(open));$('#drawerBody').inert=!open;requestAnimationFrame(syncPaperScale)}
+function setDrawer(open){drawer.classList.toggle('collapsed',!open);document.body.classList.toggle('drawer-open',open);$('#drawerToggle').setAttribute('aria-expanded',String(open));$('#drawerToggle').setAttribute('aria-label',`${open?'Close':'Open'} tools and resize`);$('#drawerToggleLabel').textContent=`${open?'CLOSE':'OPEN'} TOOLS & RESIZE`;$('#drawerBody').inert=!open;requestAnimationFrame(syncPaperScale)}
 const drawerToggle=$('#drawerToggle'),DRAWER_WIDTH_KEY='bullet-shitter-tools-width-v1';
 let drawerDrag=null,suppressDrawerClick=false;
 function resizeDrawer(width){
@@ -344,7 +344,7 @@ drawerTabs.forEach(tab=>tab.addEventListener('click',()=>selectDrawerTab(tab)));
 let alqZoom=100;
 function setAlqZoom(value){alqZoom=Math.max(100,Math.min(400,value));$('#alqPages').style.width=`${alqZoom}%`;$('#alqZoomLabel').textContent=`${alqZoom}%`;$('#alqZoomOut').disabled=alqZoom===100;$('#alqZoomIn').disabled=alqZoom===400}
 $('#alqZoomIn').addEventListener('click',()=>setAlqZoom(alqZoom+25));$('#alqZoomOut').addEventListener('click',()=>setAlqZoom(alqZoom-25));$('#alqFit').addEventListener('click',()=>setAlqZoom(100));setAlqZoom(100);
-setDrawer(false);
+setDrawer(true);
 
 const APPEARANCE_KEY='bullet-shitter-appearance-v1';
 let appearance={theme:'light',nightHue:0};
@@ -680,8 +680,8 @@ try{
   if(Array.isArray(stored))savedReports=stored.filter(row=>row&&typeof row==='object').map(row=>({schemaVersion:1,id:row.id||makeId(),title:String(row.title||'Untitled report'),type:row.type==='OPB'?'OPB':'EPB',data:row.data&&typeof row.data==='object'?row.data:{},createdAt:row.createdAt||new Date().toISOString(),updatedAt:row.updatedAt||row.createdAt||new Date().toISOString()}));
 }catch{$('#savedReportsStatus').textContent='Saved reports could not be loaded. New reports can still be saved.'}
 
-function reportData(){const data={};reportInputs.forEach(input=>data[input.dataset.report]=input.value);return data}
-function setReportData(data={}){const safe=data&&typeof data==='object'?data:{};reportInputs.forEach(input=>input.value=safe[input.dataset.report]||'');updateReportCounts()}
+function reportData(){const data={};reportInputs.forEach(input=>data[input.dataset.report]=input.dataset.report==='dodid'?'':input.value);return data}
+function setReportData(data={}){const safe=data&&typeof data==='object'?data:{};reportInputs.forEach(input=>input.value=input.dataset.report==='dodid'?'':safe[input.dataset.report]||'');updateReportCounts()}
 function optionList(select,values,current=''){select.replaceChildren(...values.map(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;return option}));select.value=values.includes(current)?current:''}
 function setReportType(next){
   reportType=next;$('#typeEPB').checked=next==='EPB';$('#typeOPB').checked=next==='OPB';
@@ -694,7 +694,15 @@ function setReportType(next){
 }
 $('#typeEPB').addEventListener('change',event=>{if(!event.target.checked)event.target.checked=true;setReportType('EPB')});
 $('#typeOPB').addEventListener('change',event=>{if(!event.target.checked)event.target.checked=true;setReportType('OPB')});
-function updateReportCounts(){document.querySelectorAll('[data-count-for]').forEach(output=>{const input=document.querySelector(`[data-report="${output.dataset.countFor}"]`);const limit=Number(input.maxLength);output.textContent=`${input.value.length} / ${limit}`;output.classList.toggle('near-limit',input.value.length>=limit*.9)})}
+// Limits are drafting guidance, not input restrictions. Preserve every character.
+reportInputs.filter(input=>input.tagName==='TEXTAREA').forEach(input=>{
+  const limit=input.getAttribute('maxlength');if(!limit)return;
+  input.dataset.characterLimit=limit;input.removeAttribute('maxlength');
+  if(!document.querySelector(`[data-count-for="${input.dataset.report}"]`)){
+    const output=document.createElement('output');output.dataset.countFor=input.dataset.report;output.className='report-admin-count';input.after(output);
+  }
+});
+function updateReportCounts(){document.querySelectorAll('[data-count-for]').forEach(output=>{const input=document.querySelector(`[data-report="${output.dataset.countFor}"]`);const limit=Number(input.dataset.characterLimit),count=input.value.length;output.textContent=`${count} / ${limit}${count>limit?` · ${count-limit} over limit`:''}`;output.classList.toggle('near-limit',count>=limit*.9);output.classList.toggle('over-limit',count>limit)})}
 reportInputs.forEach(input=>input.addEventListener('input',updateReportCounts));
 
 function storeReports(next){try{localStorage.setItem(reportStorageKey(),JSON.stringify(next));savedReports=next;return true}catch{notify('Could not save report. Browser storage may be unavailable.');return false}}
@@ -733,7 +741,7 @@ $('#newReportButton').addEventListener('click',()=>{if(Object.values(reportData(
 
 const XFA_FIELDS={name:'S1Name',dodid:'S1SSN',grade:'Grade',dutyTitle:'dutyTitle',fromDate:'S1FromDate',thruDate:'S1ThruDate',reason:'reasonReport',dafsc:'dafsc',daysSupervised:'daysSupervised',daysNonRated:'daysNonRated',rateeAcknowledgment:'rateeAcknowledgement',organization:'orgComand',location:'orgLocation',dutyDescription:'dutyDescription',executingMission:'executingMission',leadingPeople:'leadingPeople',managingResources:'managingResources',improvingUnit:'improvingUnit',mandatoryComments:'mandatoryComments',mandatoryFitnessComments:'mandatoryFitnessComments',raterName:'raterGradeName',raterDutyTitle:'raterDutyTitle',raterOrganization:'raterOrgComm',raterStratification:'RaterStratification',hlrAssessment:'HLReviewerAssessment',hlrName:'HLRGradeName',hlrDutyTitle:'HLRDutyTitle',hlrOrganization:'HLROrgCommand',hlrStratification:'HLRStratification',promotionRecommendation:'PromoRecomm',higherResponsibility:'HLRHigherResp',futureRole1:'FutureRole1Text',futureRole2:'FutureRole2Text',futureRole3:'FutureRole3Text',stratification:'HLRStratificationBlock'};
 function xfaDate(value){return value?value.replaceAll('-',''):''}
-function xfaValues(data){const out={};Object.entries(XFA_FIELDS).forEach(([key,field])=>out[field]=key==='fromDate'||key==='thruDate'?xfaDate(data[key]):String(data[key]||''));return out}
+function xfaValues(data){const out={};Object.entries(XFA_FIELDS).forEach(([key,field])=>out[field]=key==='dodid'?'':key==='fromDate'||key==='thruDate'?xfaDate(data[key]):String(data[key]||''));return out}
 function setXfaTemplateValues(xml,values){
   const doc=new DOMParser().parseFromString(xml,'application/xml');if(doc.querySelector('parsererror'))throw new Error('Official form template could not be read.');
   [...doc.getElementsByTagNameNS('*','field')].forEach(field=>{const value=values[field.getAttribute('name')];if(value===undefined)return;let holder=[...field.children].find(el=>el.localName==='value');if(!holder){holder=doc.createElementNS(field.namespaceURI,'value');const anchor=[...field.children].find(el=>['bind','traversal','event','calculate','validate'].includes(el.localName));field.insertBefore(holder,anchor||null)}let leaf=[...holder.children][0];if(!leaf){leaf=doc.createElementNS(field.namespaceURI,'text');holder.append(leaf)}leaf.textContent=value});

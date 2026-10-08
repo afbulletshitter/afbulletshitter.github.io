@@ -342,6 +342,10 @@ body[data-theme="dark"] .write-shell:focus-within{box-shadow:inset 0 0 0 1px #7c
 .acronym-guidance ul{padding-left:20px}.acronym-guidance li{margin:8px 0}.acronym-guidance h4{margin:18px 0 8px;font-size:14px;line-height:1.4;text-transform:uppercase}
 .drawer-toggle{cursor:ew-resize;touch-action:none;user-select:none}
 .resize-note{margin:7px 0 0;color:var(--muted);font-size:14px}
+.privacy-note,.report-admin-count{display:block;margin-top:7px;font-size:13px;line-height:1.4;color:var(--muted)}
+[data-report="dodid"]:disabled{background:var(--line);cursor:not-allowed}
+.over-limit{color:#c63125!important;font-weight:800}
+body[data-theme="dark"] .over-limit{color:#ff786d!important}
 .drawer-resizing,.drawer-resizing .utility-drawer{transition:none;cursor:ew-resize}
 #drawer-saved:not([hidden]),#drawer-reports:not([hidden]){display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box}
 #drawer-saved>.drawer-section,#drawer-reports>.drawer-section{display:flex;flex-direction:column;flex:1;min-height:0;margin-bottom:0}
